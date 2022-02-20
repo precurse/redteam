@@ -1,4 +1,5 @@
 #!/bin/env python3
+from ak import *
 import os
 import subprocess
 
@@ -70,6 +71,7 @@ def main():
   compile() 
 
   print("Wrote to: "+ BASE_FILENAME + ".cs")
+  print("Compile DLL runner")
 
 if __name__ == "__main__":
   main()

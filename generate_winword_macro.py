@@ -96,6 +96,10 @@ def create_doc():
 def main():
     create_doc()
 
+    print("Document saved as: "+DOC_NAME)
+    print("Macro will run: " + CMD)
+    print("Use EvilClippy to further hide detection")
+
 
 if __name__ == "__main__":
     main()

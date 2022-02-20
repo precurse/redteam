@@ -1,4 +1,10 @@
 #!/bin/env python3
+
+print("THIS DOES NOT WORK!!!!!!!!!!")
+############## THIS DOES NOT WORK!!!!!!!!!!!!!!!!!
+######
+
+
 from ak import *
 import os
 import subprocess
@@ -189,6 +195,7 @@ def main():
   compile() 
 
   print("Make sure shellcode is accessible from: " + STAGER_URL)
+  print("Run with ")
 
 if __name__ == "__main__":
   main()
