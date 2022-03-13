@@ -102,6 +102,7 @@ def main():
     print("Document saved as: "+DOC_NAME)
     print("Macro will run: " + CMD)
     print("Use EvilClippy to further hide detection")
+    print("REMEMBER: 32bit only")
 
 
 if __name__ == "__main__":

