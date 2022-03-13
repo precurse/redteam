@@ -2,3 +2,5 @@
 *.doc
 *.cs
 *.xsc
+*.sc
+*.pyc
