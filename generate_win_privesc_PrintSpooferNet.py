@@ -167,6 +167,6 @@ static void Main(string[] args) {
 }
 """
 
-ak.cs_write(FN_CS, template)
+ak.write_file(FN_CS, template)
 ak.cs_compile(FN_CS)
 print("Make sure to write run.exe to C:\\Windows\\Tasks\\run.exe")

