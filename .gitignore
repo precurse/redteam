@@ -1,6 +1,6 @@
-*.exe
 *.doc
-*.cs
 *.xsc
 *.sc
 *.pyc
+win_*.exe
+win_*.cs
