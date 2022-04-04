@@ -3,4 +3,5 @@
 *.sc
 *.pyc
 win_*.exe
+win_*.dll
 win_*.cs

