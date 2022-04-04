@@ -612,4 +612,4 @@ def write_file(filename, content):
 def cs_compile(filename, flags=""):
   cmd = f"mcs {flags} {filename}"
   os.system(cmd)
-  print("Compiled " + filename.replace(".cs",".exe"))
+  print("Compiled " + filename)
