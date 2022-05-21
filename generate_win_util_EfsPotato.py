@@ -649,7 +649,7 @@ namespace EfsPotato
 """
 
 ak.write_file(FN_CS, template)
-ak.cs_compile(FN_CS, "/r:libraries/System.Data.SqlClient.dll /r:libraries/System.Data.dll")
+ak.cs_compile(FN_CS)
 
 # Command line options
 # Run with OLE
