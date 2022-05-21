@@ -15,3 +15,5 @@ sudo mv win_msf_stager.exe /var/www/html/met.exe
 sudo mv win_installutil_ps_runner.txt /var/www/html/Bypass.txt
 sudo mv msf-linux-x64 /var/www/html/
 sudo mv win_efspotato.exe /var/www/html/EfsPotato.exe
+#sudo mv output_run.txt /var/www/html/run.txt
+sudo mv output_efs.txt /var/www/html/efs.txt
