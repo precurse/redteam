@@ -2,6 +2,7 @@
 *.xsc
 *.sc
 *.pyc
-win_*.exe
+*.exe
 win_*.dll
 win_*.cs
+sql_*.dll
