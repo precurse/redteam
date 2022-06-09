@@ -3,94 +3,93 @@ listener:
   lport: 443
   webroot: /var/www/html
 
-tools:
+ps_tools:
   adpeas:
     location: adPEAS.ps1
-    type: ps
-    invoke: Invoke-adPEAS
+    cmd: Invoke-adPEAS
   getuserspns:
     location: tools/GetUserSPNs.ps1
-    type: ps
   hostrecon:
     location: tools/HostRecon.ps1
-    type: ps
-    invoke: Invoke-HostRecon
+    cmd: Invoke-HostRecon
   lapstoolkit:
     location: tools/LAPSToolkit.ps1
-    type: ps
-    invoke: Get-LAPSComputers
+    cmd: Get-LAPSComputers
   powermad:
     location: tools/powermad.ps1
-    type: ps
   powersharppack:
     location: tools/PowerSharpPack/PowerSharpPack.ps1
-    type: ps
-    invoke: PowerSharpPack -seatbelt
+    cmd: PowerSharpPack -seatbelt
   powerupsql:
     location: tools/PowerUpSQL.ps1
-    type: ps
-    invoke: Invoke-SQLAudit
+    cmd: Invoke-SQLAudit
   powerview:
     location: tools/powerview.ps1
-    type: ps
   runtxt:
     location: run.txt
-    type: ps
-  sharpsploit:
+  sharpsploit-ps:
     location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-SharpSploit.ps1
-    type: ps
-  winpeas:
-    location: tools/winPEASx64.exe
-    type: cs
-    class: winPEAS.Program
-    entrypoint: Main
+    alt: powersharppack
   winpwn:
     location: tools/Offline_WinPwn.ps1
-    type: ps
-    invoke: WinPwn
+    cmd: WinPwn
+
+zip_tools:
+  sysinternals:
+    location: tools/sysinternals.zip
+  mimikatz:
+    location: tools/mimikatz.zip
+
+cs_tools:
+  winpeas:
+    location: tools/winPEASx64.exe
+    class: winPEAS.Program
+    alt: powersharppack
   efspotato:
     location: EfsPotato.exe
-    type: cs
     class: EfsPotato.Program
-    entrypoint: Main
+    cmd: STAGER_URL
   metdll:
     location: met.dll
-    type: cs
     class: LeMans.Class1
     entrypoint: Ferarri
   metexe:
     location: met.exe
-    type: cs
     class: LeMans.Class1
-    entrypoint: Main
   pslessexec:
     location: tools/PSLessExec.exe
-    type: cs
     class: PSLessExec.Program
-    entrypoint: Main
   rubeus:
     location: tools/Rubeus.exe
-    type: cs
     class: Rubeus.Program
-    entrypoint: Main
+    cmd: triage
+    alt: powersharppack
+  seatbelt:
+    location: tools/Seatbelt.exe
+    class: Seatbelt.Program
+    cmd: -group=system
+    alt: powersharppack
+  sharpsploit:
+    location: tools/SharpSploit.exe
+    class: SharpSploit.Program
+    alt: powersharppack
+  spoolsample:
+    location: tools/SpoolSample.exe
+    class: SpoolSample.Program
+    alt: powersharppack
+  sharppersist:
+    location: tools/SharpPersist.exe
+    class: SharPersist.Program
+    alt: powersharppack
   sqlclient:
     location: tools/SQLClient.exe
-    type: cs
     class: SQLClient.Program
-    entrypoint: Main
   sharpup:
     location: tools/SharpUp.exe
-    type: cs
     class: SharpUp.Program
-    entrypoint: Main
+    cmd: audit
+    alt: powersharppack
   sharphound:
     location: tools/SharpHound.exe
-    type: cs
     class: SharpHound.Program
-    entrypoint: Main
-  sysinternals:
-    location: tools/sysinternals.zip
-    type: zip
-  mimikatz:
-    location: tools/mimikatz.zip
-    type: zip
+    alt: powersharppack

