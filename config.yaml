@@ -1,0 +1,96 @@
+listener:
+  interface: tun0
+  lport: 443
+  webroot: /var/www/html
+
+tools:
+  adpeas:
+    location: adPEAS.ps1
+    type: ps
+    invoke: Invoke-adPEAS
+  getuserspns:
+    location: tools/GetUserSPNs.ps1
+    type: ps
+  hostrecon:
+    location: tools/HostRecon.ps1
+    type: ps
+    invoke: Invoke-HostRecon
+  lapstoolkit:
+    location: tools/LAPSToolkit.ps1
+    type: ps
+    invoke: Get-LAPSComputers
+  powermad:
+    location: tools/powermad.ps1
+    type: ps
+  powersharppack:
+    location: tools/PowerSharpPack/PowerSharpPack.ps1
+    type: ps
+    invoke: PowerSharpPack -seatbelt
+  powerupsql:
+    location: tools/PowerUpSQL.ps1
+    type: ps
+    invoke: Invoke-SQLAudit
+  powerview:
+    location: tools/powerview.ps1
+    type: ps
+  runtxt:
+    location: run.txt
+    type: ps
+  sharpsploit:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-SharpSploit.ps1
+    type: ps
+  winpeas:
+    location: tools/winPEASx64.exe
+    type: cs
+    class: winPEAS.Program
+    entrypoint: Main
+  winpwn:
+    location: tools/Offline_WinPwn.ps1
+    type: ps
+    invoke: WinPwn
+  efspotato:
+    location: EfsPotato.exe
+    type: cs
+    class: EfsPotato.Program
+    entrypoint: Main
+  metdll:
+    location: met.dll
+    type: cs
+    class: LeMans.Class1
+    entrypoint: Ferarri
+  metexe:
+    location: met.exe
+    type: cs
+    class: LeMans.Class1
+    entrypoint: Main
+  pslessexec:
+    location: tools/PSLessExec.exe
+    type: cs
+    class: PSLessExec.Program
+    entrypoint: Main
+  rubeus:
+    location: tools/Rubeus.exe
+    type: cs
+    class: Rubeus.Program
+    entrypoint: Main
+  sqlclient:
+    location: tools/SQLClient.exe
+    type: cs
+    class: SQLClient.Program
+    entrypoint: Main
+  sharpup:
+    location: tools/SharpUp.exe
+    type: cs
+    class: SharpUp.Program
+    entrypoint: Main
+  sharphound:
+    location: tools/SharpHound.exe
+    type: cs
+    class: SharpHound.Program
+    entrypoint: Main
+  sysinternals:
+    location: tools/sysinternals.zip
+    type: zip
+  mimikatz:
+    location: tools/mimikatz.zip
+    type: zip

