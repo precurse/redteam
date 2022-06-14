@@ -103,10 +103,10 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--injection', '-i', default='standard', choices=ak.main_choices.keys())
   parser.add_argument('--format', '-f', default='exe', choices=['exe', 'dll'])
-  parser.add_argument('--heuristics', default=True, action=argparse.BooleanOptionalAction)
-  parser.add_argument('--amsi', default=False, action=argparse.BooleanOptionalAction)
-  parser.add_argument('--etw', default=True, action=argparse.BooleanOptionalAction)
-  parser.add_argument('--stageless', default=False, action=argparse.BooleanOptionalAction)
+  parser.add_argument('--heuristics', default=True, action='store_true')
+  parser.add_argument('--amsi', default=False, action='store_true')
+  parser.add_argument('--etw', default=True, action='store_true')
+  parser.add_argument('--stageless', default=False, action='store_true')
 
   args = parser.parse_args()
 

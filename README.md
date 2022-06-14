@@ -1,6 +1,6 @@
 # Tools for my PEN-300 course
 
-* Update `LHOST` and `LPORT` in `ak.py` to your MSF (or other C2) listening IP and port before crafting any tools.
+* Update `interface` and `lport` in `config.yml` to your MSF (or other C2) listening IP and port before crafting any tools.
 * By default, staged payloads will pull from the following URL `http://(LHOST)/sc`.
 * Stageless payloads will automatically apply an XOR encryption to obfuscate the shellcode.
 

