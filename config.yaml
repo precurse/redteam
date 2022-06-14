@@ -15,6 +15,9 @@ ps_tools:
   lapstoolkit:
     location: tools/LAPSToolkit.ps1
     cmd: Get-LAPSComputers
+  rubeus-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-Rubeus.ps1
+    cmd: Invoke-Rubeus -Command "klist"
   powermad:
     location: tools/powermad.ps1
   powersharppack:
@@ -27,11 +30,29 @@ ps_tools:
     location: tools/powerview.ps1
   runtxt:
     location: run.txt
+  seatbelt-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-Seatbelt.ps1
+    cmd: Invoke-Seatbelt -Command "-group=system"
+  sharphound-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-SharpHound4.ps1
+    cmd: Invoke-SharpHound4
   sharpsploit-ps:
     location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-SharpSploit.ps1
-    alt: powersharppack
+    cmd: Invoke-SharpSploit
+  sharpersist-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-SharPersist.ps1
+    cmd: Invoke-SharPersist -Command "-t service -m list"
+  sharpkatz-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-SharpKatz.ps1
+    cmd: Invoke-SharpKatz
+  sharpview-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-Sharpview.ps1
+    cmd: Invoke-Sharpview -Command "Get-DomainController"; Invoke-Sharpview -Command "Get-NetShare" ; Invoke-Sharpview -Command "Find-InterestingFile"; Invoke-Sharpview -Command "Find-InterestingDomainShareFile"
+  winpeas-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-winPEAS.ps1
+    cmd: Invoke-winPEAS
   winpwn:
-    location: tools/Offline_WinPwn.ps1
+    location: tools/WinPwn/Offline_WinPwn.ps1
     cmd: WinPwn
 
 zip_tools:
@@ -48,8 +69,6 @@ cs_tools:
   winpeas:
     location: tools/winPEASx64.exe
     class: winPEAS.Program
-    alt: powersharppack
-    altcmd: PowerSharpPack -winpeas
   efspotato:
     location: EfsPotato.exe
     class: EfsPotato.Program
@@ -57,7 +76,7 @@ cs_tools:
   metdll:
     location: met.dll
     class: LeMans.Class1
-    entrypoint: Ferarri
+    entrypoint: ferrari
   metexe:
     location: met.exe
     class: LeMans.Class1
@@ -69,29 +88,19 @@ cs_tools:
     location: tools/Rubeus.exe
     class: Rubeus.Program
     cmd: triage
-    alt: powersharppack
-    altcmd: PowerSharpPack -rubeus -Command "klist"
   seatbelt:
     location: tools/Seatbelt.exe
     class: Seatbelt.Program
     cmd: -group=system
-    alt: powersharppack
-    altcmd: PowerSharpPack -seatbelt -command "-group=system"
   sharpsploit:
     location: tools/SharpSploit.exe
     class: SharpSploit.Program
-    alt: powersharppack
-    altcmd: PowerSharpPack -sharpsploit
   spoolsample:
     location: tools/SpoolSample.exe
     class: SpoolSample.Program
-    alt: powersharppack
-    altcmd: PowerSharpPack -spoolsample
   sharppersist:
     location: tools/SharpPersist.exe
     class: SharPersist.Program
-    alt: powersharppack
-    altcmd: PowerSharpPack -sharppersist
   sqlclient:
     location: tools/SQLClient.exe
     class: SQLClient.Program
@@ -99,16 +108,10 @@ cs_tools:
     location: tools/SharpUp.exe
     class: SharpUp.Program
     cmd: audit
-    alt: powersharppack
-    altcmd: PowerSharpPack -sharpup -Command "audit"
   sharprdp:
     location: tools/SharpRDP.exe
     class: SharpRDP.Program
-    alt: powersharppack
-    altcmd: PowerSharpPack -sharprdp
   sharphound:
     location: tools/SharpHound.exe
     class: SharpHound.Program
     cmd: -d example.com --OutputDirectory C:\windows\tasks
-    alt: powersharppack
-    altcmd: PowerSharpPack -sharphound3 -Command "-d example.com --OutputDirectory C:\\windows\\tasks"
