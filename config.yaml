@@ -130,4 +130,4 @@ cs_tools:
   sharphound:
     location: tools/SharpHound.exe
     class: SharpHound.Program
-    cmd: -d example.com --OutputDirectory C:\windows\tasks
+    cmd: -d example.com --OutputDirectory C:\windows\tasks -c All,GPOLocalGroup
