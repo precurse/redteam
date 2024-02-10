@@ -1,4 +1,31 @@
 PINVOKE = {
+   "SystemFunction032": """
+        [DllImport("advapi32.dll", CharSet = CharSet.Auto, SetLastError = false, EntryPoint = "SystemFunction032")]
+        static extern int SystemFunction032(ref CRYPTO_BUFFER data, ref CRYPTO_BUFFER key);
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct CRYPTO_BUFFER
+        {
+            public uint Length;
+            public uint MaximumLength;
+            public IntPtr Buffer;
+        }
+
+        // Stolen from: https://github.com/vletoux/MakeMeEnterpriseAdmin/blob/0e3dcfd55be8ac5fde1631d0f50753a761927082/MakeMeEnterpriseAdmin.ps1#L98-L125
+        static int RtlEncryptDecryptRC4(IntPtr input, byte[] key, int lengh)
+        {
+            CRYPTO_BUFFER dataBuffer = new CRYPTO_BUFFER();
+            dataBuffer.Length = dataBuffer.MaximumLength = (uint)lengh;
+            dataBuffer.Buffer = input;
+            CRYPTO_BUFFER keyBuffer = new CRYPTO_BUFFER();
+            keyBuffer.Length = keyBuffer.MaximumLength = (uint)key.Length;
+            keyBuffer.Buffer = Marshal.AllocHGlobal(key.Length);
+            Marshal.Copy(key, 0, keyBuffer.Buffer, key.Length);
+            int ret = SystemFunction032(ref dataBuffer, ref keyBuffer);
+            Marshal.FreeHGlobal(keyBuffer.Buffer);
+            return ret;
+        }
+   """,
    "CreateThread": """
      [DllImport("kernel32")]
      private static extern IntPtr CreateThread( UInt32 lpThreadAttributes, UInt32 dwStackSize, UInt32 lpStartAddress, IntPtr param, UInt32 dwCreationFlags, ref UInt32 lpThreadId);

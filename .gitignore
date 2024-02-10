@@ -6,3 +6,6 @@
 win_*.dll
 win_*.cs
 sql_*.dll
+.local/
+.cache/
+.msf4/

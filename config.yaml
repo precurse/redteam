@@ -1,5 +1,5 @@
 listener:
-  interface: tun0
+  interface: tailscale0
   lport: 443
   webroot: /var/www/html
 
