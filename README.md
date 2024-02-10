@@ -1,15 +1,16 @@
 # Tools for my PEN-300 course
 
-* Update `interface` and `lport` in `config.yml` to your MSF (or other C2) listening IP and port before crafting any tools.
+# Setup
+* Update `webroot_url`, `webroot_dir`, `interface`, and `lport` in the `config.yml`
 * By default, staged payloads will pull from the following URL `http://(LHOST)/sc`.
 * Stageless payloads will automatically apply an XOR encryption to obfuscate the shellcode.
 
-# Install Requirements
+## Install Requirements
 ```
 pip3 install -r requirements.txt
 
 # Kali
-apt install metasploit-framework mcs-mono
+apt install metasploit-framework mcs-mono wamerican
 
 # Ubuntu
 sudo apt install mcs-mono wamerican

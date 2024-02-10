@@ -1,7 +1,8 @@
 listener:
-  interface: tailscale0
+  interface: tap0
   lport: 443
-  webroot: /var/www/html
+  webroot_url: https://10.0.0.1/
+  webroot_dir: ./webroot
 
 ps_tools:
   adpeas:
