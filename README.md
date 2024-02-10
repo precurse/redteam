@@ -7,6 +7,8 @@
 # Install Requirements
 ```
 pip3 install -r requirements.txt
+
+apt install metasploit-framework
 ```
 
 ## All Tools

