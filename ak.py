@@ -178,7 +178,8 @@ SC_SYS32_DECODER = """
 
         shellcode = new byte[_data.Length];
         Marshal.Copy(_data.Buffer, shellcode, 0, (int)_data.Length);
-
+        Marshal.FreeHGlobal(key.Buffer);
+        Marshal.FreeHGlobal(_data.Buffer);
 """
 
 # Decoder for AES shellcode
@@ -190,6 +191,7 @@ SC_AES_DECODER = """
 
 ETW_MAIN_CODE = "PatchEtw(getETWPayload());"
 
+# TODO: Remove if Systemfunction32 works well
 RC4_DECRYPT_IMPORT = """
 public class RC4
 {
