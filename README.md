@@ -10,10 +10,10 @@
 pip3 install -r requirements.txt
 
 # Kali
-apt install metasploit-framework mcs-mono wamerican
+apt install metasploit-framework mono-mcs wamerican
 
 # Ubuntu
-sudo apt install mcs-mono wamerican
+sudo apt install mono-mcs wamerican
 wget http://downloads.metasploit.com/data/releases/metasploit-latest-linux-x64-installer.run
 chmod +x metasploit-latest-linux-x64-installer.run
 sudo ./metasploit-latest-linux-x64-installer.run
@@ -45,12 +45,15 @@ generate_win_xsl.py
 ## MSF Stager
 
 ```
-usage: generate_win_msf_stager.py [-h] [--injection {hollow,interprocess,earlybird,standard}] [--format {exe,dll,aspx}] [--heuristics] [--amsi] [--etw] [--stageless] [--output OUTPUT]
+usage: generate_win_msf_stager.py [-h] [--injection {hollow,interprocess,earlybird,standard}] [--msfpayload {reverse_winhttp,reverse_https}] [--format {exe,dll,aspx}] [--encrypt {xor,rc4}] [--heuristics]
+                                  [--amsi] [--etw] [--stageless] [--output OUTPUT]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --injection {hollow,interprocess,earlybird,standard}, -i {hollow,interprocess,earlybird,standard}
+  --msfpayload {reverse_winhttp,reverse_https}
   --format {exe,dll,aspx}, -f {exe,dll,aspx}
+  --encrypt {xor,rc4}, -e {xor,rc4}
   --heuristics
   --amsi
   --etw

