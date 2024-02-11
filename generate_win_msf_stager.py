@@ -34,7 +34,7 @@ namespace {cs_namespace}
     public class {cs_classname}
     {{
     {imports}
-        public static void {cs_entry}()
+        public static unsafe void {cs_entry}()
         {{
         {main_code}
         }}
@@ -78,7 +78,7 @@ class Stager:
       self.cs_entrypoint = CS_ENTRY_DLL
       self.cs_namespace = CS_NAMESPACE
       self.cs_classname = CS_CLASSNAME
-      self.compile_flags = f"/target:library -out:{self.compiled_fn}"
+      self.compile_flags = f"/target:library /unsafe -out:{self.compiled_fn}"
     elif args.format == "exe":
       self.compiled = True
       self.source_fn = self.args.output + ".cs"
@@ -86,7 +86,7 @@ class Stager:
       self.cs_entrypoint = "Main"
       self.cs_namespace = CS_NAMESPACE
       self.cs_classname = CS_CLASSNAME
-      self.compile_flags = f"-out:{self.compiled_fn}"
+      self.compile_flags = f"/unsafe -out:{self.compiled_fn}"
     elif args.format == "aspx":
       self.compiled = False
       self.source_fn = self.args.output + ".aspx"

