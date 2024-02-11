@@ -190,4 +190,8 @@ PINVOKE = {
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
    """,
+   "EnumFonts":"""
+    [DllImport("gdi32.dll")]
+    static extern int EnumFonts(IntPtr hdc, string lpLogfont, EnumFontProc lpEnumFontFnc, IntPtr lParam);
+   """
 }

