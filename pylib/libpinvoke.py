@@ -185,4 +185,9 @@ PINVOKE = {
      [DllImport("kernel32.dll")]
      public static extern void RtlZeroMemory(IntPtr pBuffer, int length);
    """,
+
+   "ShowWindow": """
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+   """,
 }
