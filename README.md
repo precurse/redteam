@@ -45,15 +45,17 @@ generate_win_xsl.py
 ## MSF Stager
 
 ```
-usage: generate_win_msf_stager.py [-h] [--injection {hollow,interprocess,earlybird,standard}] [--msfpayload {reverse_winhttp,reverse_https}] [--format {exe,dll,aspx}] [--encrypt {xor,rc4}] [--heuristics]
-                                  [--amsi] [--etw] [--stageless] [--output OUTPUT]
+usage: generate_win_msf_stager.py [-h] [--injection {hollow,interprocess,earlybird,standard}] [--msfpayload {reverse_winhttp,reverse_https}] [--format {exe,dll,aspx}] [--encrypt {xor,rc4,aes}] [--key KEY]
+                                  [--iv IV] [--heuristics] [--amsi] [--etw] [--stageless] [--output OUTPUT]
 
 options:
   -h, --help            show this help message and exit
   --injection {hollow,interprocess,earlybird,standard}, -i {hollow,interprocess,earlybird,standard}
   --msfpayload {reverse_winhttp,reverse_https}
   --format {exe,dll,aspx}, -f {exe,dll,aspx}
-  --encrypt {xor,rc4}, -e {xor,rc4}
+  --encrypt {xor,rc4,aes}, -e {xor,rc4,aes}
+  --key KEY             Key for AES or RC4
+  --iv IV               IV for AES
   --heuristics
   --amsi
   --etw

