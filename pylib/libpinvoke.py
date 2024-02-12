@@ -193,5 +193,9 @@ PINVOKE = {
    "EnumFonts":"""
     [DllImport("gdi32.dll")]
     static extern int EnumFonts(IntPtr hdc, string lpLogfont, EnumFontProc lpEnumFontFnc, IntPtr lParam);
+   """,
+   "GetModuleHandle":"""
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern IntPtr GetModuleHandle(string lpModuleName);
    """
 }

