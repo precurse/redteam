@@ -105,11 +105,6 @@ PINVOKE = {
     public static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
   """,
   
-  "VirtualAllocEx2": """
-    [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-    public static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, AllocationType flAllocationType, AllocationProtect flProtect);
-  """,
-  
   "VirtualAllocExNuma": """
     [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
     static extern IntPtr VirtualAllocExNuma(IntPtr hProcess, IntPtr lpAddress, uint dwSize, UInt32 flAllocationType, UInt32 flProtect, UInt32 nndPreferred);
@@ -128,11 +123,6 @@ PINVOKE = {
   "CreateRemoteThread": """
     [DllImport("kernel32.dll")]
     static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
-  """,
-  
-  "CreateRemoteThread2": """
-    [DllImport("kernel32.dll")]
-    public static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, out IntPtr lpThreadId);
   """,
   
   "WriteProcessMemory": """
