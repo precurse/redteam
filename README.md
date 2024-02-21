@@ -45,19 +45,20 @@ generate_win_xsl.py
 ## MSF Stager
 
 ```
-usage: generate_win_msf_stager.py [-h] [--injection {hollow,interprocess,earlybird,standard}] [--msfpayload {reverse_winhttp,reverse_https}] [--format {exe,dll,aspx}] [--encrypt {xor,rc4,aes}] [--key KEY]
-                                  [--iv IV] [--heuristics] [--amsi] [--etw] [--stageless] [--output OUTPUT]
+usage: generate_win_msf_stager.py [-h] [--injection {hollow,interprocess,earlybird,standard,loadliba,jmp,callback-esl}] [--msfpayload {reverse_winhttp,reverse_https,calc}] [--process PROCESS]
+                                  [--format {exe,dll,aspx,b64}] [--encrypt {xor,rc4,aes}] [--invoke {pinvoke,dinvoke}] [--key KEY] [--iv IV] [--heuristics] [--etw] [--stageless] [--output OUTPUT]
 
 options:
   -h, --help            show this help message and exit
-  --injection {hollow,interprocess,earlybird,standard}, -i {hollow,interprocess,earlybird,standard}
-  --msfpayload {reverse_winhttp,reverse_https}
-  --format {exe,dll,aspx}, -f {exe,dll,aspx}
+  --injection {hollow,interprocess,earlybird,standard,loadliba,jmp,callback-esl}, -i {hollow,interprocess,earlybird,standard,loadliba,jmp,callback-esl}
+  --msfpayload {reverse_winhttp,reverse_https,calc}
+  --process PROCESS     Process to create and/or inject into
+  --format {exe,dll,aspx,b64}, -f {exe,dll,aspx,b64}
   --encrypt {xor,rc4,aes}, -e {xor,rc4,aes}
+  --invoke {pinvoke,dinvoke}
   --key KEY             Key for AES or RC4
   --iv IV               IV for AES
   --heuristics
-  --amsi
   --etw
   --stageless
   --output OUTPUT, -o OUTPUT
@@ -77,6 +78,9 @@ python3 generate_win_msf_stager.py --stageless --format exe
 
 # Create a stageless aspx
 python3 generate_win_msf_stager.py --stageless --format aspx
+
+# Base64-gzipped payload for testing (pop calc)
+python3 generate_win_msf_stager.py --stageless --format b64 --msfpayload calc
 ```
 
 ## Generate Tool Loading Commands
