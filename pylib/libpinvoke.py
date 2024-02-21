@@ -1,49 +1,24 @@
 PINVOKE = {
-   "SystemFunction032": """
-        [DllImport("advapi32.dll", CharSet = CharSet.Auto, SetLastError = false, EntryPoint = "SystemFunction032")]
-        static extern int SystemFunction032(ref CRYPTO_BUFFER data, ref CRYPTO_BUFFER key);
-
-        [StructLayout(LayoutKind.Sequential)]
-        struct CRYPTO_BUFFER
-        {
-            public uint Length;
-            public uint MaximumLength;
-            public IntPtr Buffer;
-        }
-
-        // Stolen from: https://github.com/vletoux/MakeMeEnterpriseAdmin/blob/0e3dcfd55be8ac5fde1631d0f50753a761927082/MakeMeEnterpriseAdmin.ps1#L98-L125
-        static int RtlEncryptDecryptRC4(IntPtr input, byte[] key, int lengh)
-        {
-            CRYPTO_BUFFER dataBuffer = new CRYPTO_BUFFER();
-            dataBuffer.Length = dataBuffer.MaximumLength = (uint)lengh;
-            dataBuffer.Buffer = input;
-            CRYPTO_BUFFER keyBuffer = new CRYPTO_BUFFER();
-            keyBuffer.Length = keyBuffer.MaximumLength = (uint)key.Length;
-            keyBuffer.Buffer = Marshal.AllocHGlobal(key.Length);
-            Marshal.Copy(key, 0, keyBuffer.Buffer, key.Length);
-            int ret = SystemFunction032(ref dataBuffer, ref keyBuffer);
-            Marshal.FreeHGlobal(keyBuffer.Buffer);
-            return ret;
-        }
-   """,
    "CreateThread": """
      [DllImport("kernel32")]
      static extern IntPtr CreateThread(IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
    """,
+
    "CreateProcess": """
       [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
       static extern bool CreateProcess( string lpApplicationName, string lpCommandLine, IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
    """,
+
   "GetProcAddress":"""
      [DllImport("kernel32")]
      public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
   """,
-  
+
   "LoadLibrary":"""
      [DllImport("kernel32")]
      public static extern IntPtr LoadLibrary(string name);
    """,
-  
+
   "NtCreateSection":"""
     [DllImport("ntdll.dll", SetLastError = true, ExactSpelling = true)]
     public static extern UInt32 NtCreateSection(ref IntPtr SectionHandle, SectionAccess DesiredAccess, IntPtr ObjectAttributes, ref UInt64 MaximumSize, MemoryProtection SectionPageProtection,	MappingAttributes AllocationAttributes, IntPtr FileHandle);
@@ -180,14 +155,17 @@ PINVOKE = {
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
    """,
+
    "EnumFonts":"""
     [DllImport("gdi32.dll")]
     static extern int EnumFonts(IntPtr hdc, string lpLogfont, EnumFontProc lpEnumFontFnc, IntPtr lParam);
    """,
+
    "GetModuleHandle":"""
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern IntPtr GetModuleHandle(string lpModuleName);
    """,
+
    "EnumSystemLocales":"""
    [DllImport("kernel32.dll")]
    static extern bool EnumSystemLocales(IntPtr lpLocaleEnumProc, uint dwFlags);
